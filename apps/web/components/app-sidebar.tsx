@@ -92,35 +92,44 @@ export function AppSidebar({ activeTab, onTabChange }: AppSidebarProps) {
       <nav className="flex flex-1 flex-col overflow-y-auto p-2 pt-3">
 
         {/* ── Chats section ── */}
-        <div className="mb-1">
-          {/* Section header */}
-          <div className="flex items-center justify-between px-2 py-1">
-            <button
-              onClick={() => setChatsOpen((o) => !o)}
-              className="flex items-center gap-1.5 text-[11px] font-mono uppercase tracking-widest text-muted-foreground/60 transition-colors hover:text-muted-foreground"
-            >
-              <ChevronIcon
-                className={cn("transition-transform duration-150", chatsOpen ? "rotate-0" : "-rotate-90")}
-              />
-              Chats
-            </button>
-            <button
-              onClick={() => onTabChange(null)}
-              title="New chat"
-              className="flex size-5 items-center justify-center rounded text-muted-foreground/60 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
-            >
-              <svg className="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="12" y1="5" x2="12" y2="19" />
-                <line x1="5" y1="12" x2="19" y2="12" />
-              </svg>
-            </button>
-          </div>
+        <div className="mb-1 flex flex-col gap-0.5">
+          {/* New Chat button */}
+          <button
+            onClick={() => onTabChange(null)}
+            className={cn(
+              "group relative flex w-full items-center gap-2.5 rounded-[5px] px-2 py-[7px] text-[13px] transition-colors duration-100",
+              activeTab === null
+                ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground"
+                : "text-muted-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
+            )}
+          >
+            {activeTab === null && (
+              <span className="absolute bottom-1.5 left-0 top-1.5 w-[2px] rounded-full bg-primary" />
+            )}
+            <svg className={cn("size-4 shrink-0 transition-colors", activeTab === null ? "text-primary" : "text-muted-foreground/70 group-hover:text-muted-foreground")} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            New Chat
+          </button>
+
+          {/* Chats dropdown button */}
+          <button
+            onClick={() => setChatsOpen((o) => !o)}
+            className="group flex w-full items-center gap-2.5 rounded-[5px] px-2 py-[7px] text-[13px] text-muted-foreground transition-colors duration-100 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
+          >
+            <ChatBubbleIcon className="size-4 shrink-0 text-muted-foreground/70 group-hover:text-muted-foreground" />
+            <span className="flex-1 text-left">Chats</span>
+            <ChevronIcon
+              className={cn("shrink-0 transition-transform duration-150", chatsOpen ? "rotate-0" : "-rotate-90")}
+            />
+          </button>
 
           {/* Chat list */}
           {chatsOpen && (
-            <div className="mt-0.5">
+            <div className="ml-2 mt-0.5 border-l border-sidebar-border pl-3">
               {previousChats.length === 0 ? (
-                <p className="px-3 py-2 font-mono text-[11px] text-muted-foreground/40">
+                <p className="py-2 font-mono text-[11px] text-muted-foreground/40">
                   No previous chats
                 </p>
               ) : (
@@ -130,7 +139,6 @@ export function AppSidebar({ activeTab, onTabChange }: AppSidebarProps) {
                     onClick={() => onTabChange(null)}
                     className="group flex w-full items-center gap-2 rounded-[5px] px-2 py-[6px] text-left transition-colors hover:bg-sidebar-accent/60"
                   >
-                    <ChatBubbleIcon className="shrink-0 text-muted-foreground/50" />
                     <span className="flex-1 truncate font-mono text-[11px] text-muted-foreground group-hover:text-sidebar-foreground">
                       {chat.title}
                     </span>
