@@ -174,6 +174,8 @@ export default function HomePage() {
       const exists = prev.some((r) => r.reportId === report.reportId)
       return exists ? prev : [report, ...prev]
     })
+    setOpenReport(report)
+    setActiveTab("reports")
   }
 
   const handleOpenReport = (report: DDReport) => {
