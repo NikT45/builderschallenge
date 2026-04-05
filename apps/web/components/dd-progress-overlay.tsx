@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect } from "react"
 import { cn } from "@workspace/ui/lib/utils"
 import { useDDProgress } from "@/hooks/useDDProgress"
 import type { AgentName } from "@/lib/types"
@@ -29,9 +30,9 @@ interface DDProgressOverlayProps {
 export function DDProgressOverlay({ jobId, company, onComplete }: DDProgressOverlayProps) {
   const { isRunning, overallPct, agents, synthesisStarted, report } = useDDProgress(jobId)
 
-  if (report && !isRunning) {
-    onComplete(report)
-  }
+  useEffect(() => {
+    if (report && !isRunning) onComplete(report)
+  }, [report, isRunning]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const activeAgent = AGENT_ORDER.find((a) => agents[a].status === "running")
 
