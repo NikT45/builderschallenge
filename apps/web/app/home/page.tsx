@@ -4,9 +4,9 @@ import { useState } from "react"
 import { AppSidebar, type Tab } from "@/components/app-sidebar"
 import { ChatView } from "@/components/chat-view"
 import { ReportViewer } from "@/components/report-viewer"
-import type { DDReport } from "@/lib/types"
+import type { DDReport, Verdict } from "@/lib/types"
 
-// ─── Reports ─────────────────────────────────────────────────────────────────
+// ─── Reports Panel ───────────────────────────────────────────────────────────
 
 function ReportsPanel({ reports, onOpen }: { reports: DDReport[]; onOpen: (r: DDReport) => void }) {
   return (
@@ -35,10 +35,6 @@ function ReportsPanel({ reports, onOpen }: { reports: DDReport[]; onOpen: (r: DD
               Ask the agent to run a due diligence report and it will appear here.
             </p>
           </div>
-          <div className="flex gap-2">
-            <span className="rounded-[4px] border border-border bg-muted px-2 py-1 font-mono text-[10px] text-muted-foreground">PDF</span>
-            <span className="rounded-[4px] border border-border bg-muted px-2 py-1 font-mono text-[10px] text-muted-foreground">Markdown</span>
-          </div>
         </div>
       ) : (
         <div className="flex-1 overflow-y-auto px-4 py-4">
@@ -49,13 +45,17 @@ function ReportsPanel({ reports, onOpen }: { reports: DDReport[]; onOpen: (r: DD
                 onClick={() => onOpen(r)}
                 className="group flex w-full items-center justify-between rounded-[7px] border border-border bg-card px-4 py-3 text-left transition-colors hover:bg-muted"
               >
-                <div>
-                  <p className="text-[13px] font-medium text-foreground">{r.company}</p>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className="truncate text-[13px] font-medium text-foreground">{r.company}</p>
+                    <VerdictPill verdict={r.report.executiveSummary.verdict} />
+                  </div>
                   <p className="font-mono text-[10px] text-muted-foreground">
+                    {r.report.company.isPublic ? "Public" : "Private"} ·{" "}
                     {new Date(r.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                   </p>
                 </div>
-                <svg className="size-4 text-muted-foreground/50 transition-colors group-hover:text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <svg className="size-4 shrink-0 text-muted-foreground/50 transition-colors group-hover:text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                   <polyline points="9 18 15 12 9 6" />
                 </svg>
               </button>
@@ -64,6 +64,18 @@ function ReportsPanel({ reports, onOpen }: { reports: DDReport[]; onOpen: (r: DD
         </div>
       )}
     </div>
+  )
+}
+
+function VerdictPill({ verdict }: { verdict: Verdict }) {
+  const bg =
+    verdict === "Favorable" ? "bg-green-600" :
+    verdict === "Cautious" ? "bg-amber-600" :
+    "bg-red-600"
+  return (
+    <span className={`rounded-[3px] px-1.5 py-0.5 font-mono text-[8px] font-bold uppercase tracking-wide text-white ${bg}`}>
+      {verdict}
+    </span>
   )
 }
 
@@ -124,35 +136,13 @@ function SettingsPanel() {
             <div className="space-y-3 rounded-[7px] border border-border bg-card p-4">
               {[
                 { label: "Anthropic API Key", placeholder: "sk-ant-…" },
-                { label: "SEC EDGAR API Key", placeholder: "Optional" },
+                { label: "Tavily API Key", placeholder: "tvly-…" },
               ].map(({ label, placeholder }) => (
                 <div key={label} className="space-y-1">
                   <label className="font-mono text-[11px] text-muted-foreground">{label}</label>
                   <input type="password" placeholder={placeholder} className="w-full rounded-[5px] border border-border bg-background px-3 py-1.5 font-mono text-[12px] text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-2 focus:ring-ring/40" />
                 </div>
               ))}
-            </div>
-          </section>
-          <section>
-            <h2 className="mb-3 font-mono text-[11px] uppercase tracking-widest text-muted-foreground">Model</h2>
-            <div className="space-y-2 rounded-[7px] border border-border bg-card p-4">
-              <label className="font-mono text-[11px] text-muted-foreground">Claude Model</label>
-              <select className="w-full rounded-[5px] border border-border bg-background px-3 py-1.5 font-mono text-[12px] text-foreground focus:outline-none focus:ring-2 focus:ring-ring/40">
-                <option value="claude-opus-4-6">claude-opus-4-6 (Most capable)</option>
-                <option value="claude-sonnet-4-6">claude-sonnet-4-6 (Balanced)</option>
-                <option value="claude-haiku-4-5">claude-haiku-4-5 (Fast)</option>
-              </select>
-            </div>
-          </section>
-          <section>
-            <h2 className="mb-3 font-mono text-[11px] uppercase tracking-widest text-muted-foreground">Export Format</h2>
-            <div className="space-y-2 rounded-[7px] border border-border bg-card p-4">
-              <label className="font-mono text-[11px] text-muted-foreground">Default report format</label>
-              <div className="flex gap-2">
-                {["Markdown", "PDF", "JSON"].map((fmt) => (
-                  <button key={fmt} className={`rounded-[5px] border px-3 py-1.5 font-mono text-[11px] transition-colors ${fmt === "Markdown" ? "border-primary bg-primary/10 text-primary" : "border-border bg-background text-muted-foreground hover:bg-muted"}`}>{fmt}</button>
-                ))}
-              </div>
             </div>
           </section>
           <button className="w-full rounded-[5px] bg-primary py-2 font-mono text-[12px] font-medium text-primary-foreground transition-opacity hover:opacity-80">Save settings</button>
@@ -190,7 +180,6 @@ export default function HomePage() {
     }
     if (activeTab === "documents") return <DocumentsPanel />
     if (activeTab === "settings") return <SettingsPanel />
-    // null = new chat / active chat
     return <ChatView onReportComplete={handleReportComplete} />
   }
 

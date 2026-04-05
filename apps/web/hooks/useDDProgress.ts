@@ -3,11 +3,10 @@
 import { useState, useEffect, useRef } from "react"
 import { streamDDProgress } from "@/lib/api"
 import { readSSEStream } from "@/lib/sse"
-import type { AgentName, AgentStatus, DDReport } from "@/lib/types"
+import type { AgentName, AgentStatus, DDReport, CompanyProfile, StructuredReport } from "@/lib/types"
 
 interface AgentState {
   status: AgentStatus
-  overallPct: number
   preview?: string
 }
 
@@ -16,17 +15,21 @@ interface DDProgressState {
   overallPct: number
   agents: Record<AgentName, AgentState>
   synthesisStarted: boolean
+  profile: CompanyProfile | null
   report: DDReport | null
+  errorMessage: string | null
 }
 
 const DEFAULT_AGENTS: Record<AgentName, AgentState> = {
-  financial: { status: "queued", overallPct: 0 },
-  risk: { status: "queued", overallPct: 0 },
-  competitive: { status: "queued", overallPct: 0 },
-  management: { status: "queued", overallPct: 0 },
+  intake: { status: "queued" },
+  financial: { status: "queued" },
+  market: { status: "queued" },
+  risk: { status: "queued" },
+  management: { status: "queued" },
+  synthesis: { status: "queued" },
 }
 
-const RECONNECT_DELAYS = [2000, 4000, 8000, 15000, 30000] // ms
+const RECONNECT_DELAYS = [2000, 4000, 8000, 15000, 30000]
 
 export function useDDProgress(jobId: string | null): DDProgressState {
   const [state, setState] = useState<DDProgressState>({
@@ -34,7 +37,9 @@ export function useDDProgress(jobId: string | null): DDProgressState {
     overallPct: 0,
     agents: { ...DEFAULT_AGENTS },
     synthesisStarted: false,
+    profile: null,
     report: null,
+    errorMessage: null,
   })
 
   const attemptRef = useRef(0)
@@ -46,7 +51,9 @@ export function useDDProgress(jobId: string | null): DDProgressState {
         overallPct: 0,
         agents: { ...DEFAULT_AGENTS },
         synthesisStarted: false,
+        profile: null,
         report: null,
+        errorMessage: null,
       })
       attemptRef.current = 0
       return
@@ -65,21 +72,16 @@ export function useDDProgress(jobId: string | null): DDProgressState {
         for await (const event of readSSEStream(response)) {
           if (cancelled) return
 
-          if (event.type === "agent_progress") {
+          if (event.type === "intake_complete") {
+            setState((s) => ({ ...s, profile: event.profile }))
+          } else if (event.type === "agent_progress") {
             setState((s) => ({
               ...s,
               overallPct: Math.max(s.overallPct, event.overallPct),
-              agents: {
-                ...s.agents,
-                [event.agent]: {
-                  status: event.status,
-                  overallPct: event.overallPct,
-                  preview: event.preview,
-                },
-              },
+              agents: { ...s.agents, [event.agent]: { status: event.status, preview: event.preview } },
             }))
           } else if (event.type === "synthesis_started") {
-            setState((s) => ({ ...s, synthesisStarted: true, overallPct: 75 }))
+            setState((s) => ({ ...s, synthesisStarted: true }))
           } else if (event.type === "report_complete") {
             setState((s) => ({
               ...s,
@@ -88,19 +90,18 @@ export function useDDProgress(jobId: string | null): DDProgressState {
               report: {
                 reportId: event.reportId,
                 company: event.company,
-                markdown: event.markdown,
+                report: event.report as StructuredReport,
                 createdAt: Date.now(),
               },
             }))
-            return // done — no reconnect needed
+            return
           } else if (event.type === "error") {
             console.error("DD error:", event.message)
-            setState((s) => ({ ...s, isRunning: false }))
+            setState((s) => ({ ...s, isRunning: false, errorMessage: event.message }))
             return
           }
         }
 
-        // Stream ended without report_complete — reconnect
         if (!cancelled) scheduleReconnect()
       } catch (err) {
         if (!cancelled) {

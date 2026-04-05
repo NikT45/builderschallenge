@@ -2,7 +2,7 @@
 
 import React, { useState } from "react"
 import { CheckCircle2, Circle, CircleAlert, CircleDotDashed, CircleX } from "lucide-react"
-import { motion, AnimatePresence, LayoutGroup } from "framer-motion"
+import { motion, AnimatePresence, LayoutGroup, type Variants } from "framer-motion"
 
 export type PlanTaskStatus = "pending" | "in-progress" | "completed" | "failed" | "need-help"
 
@@ -31,21 +31,20 @@ const prefersReducedMotion =
     ? window.matchMedia("(prefers-reduced-motion: reduce)").matches
     : false
 
-const taskVariants = {
+const EASE = [0.2, 0.65, 0.3, 0.9] as const
+
+const taskVariants: Variants = {
   hidden: { opacity: 0, y: prefersReducedMotion ? 0 : -5 },
   visible: {
     opacity: 1,
     y: 0,
-    transition: {
-      type: prefersReducedMotion ? "tween" : "spring",
-      stiffness: 500,
-      damping: 30,
-      duration: prefersReducedMotion ? 0.2 : undefined,
-    },
+    transition: prefersReducedMotion
+      ? { type: "tween", duration: 0.2 }
+      : { type: "spring", stiffness: 500, damping: 30 },
   },
 }
 
-const subtaskListVariants = {
+const subtaskListVariants: Variants = {
   hidden: { opacity: 0, height: 0, overflow: "hidden" },
   visible: {
     height: "auto",
@@ -55,38 +54,35 @@ const subtaskListVariants = {
       duration: 0.25,
       staggerChildren: prefersReducedMotion ? 0 : 0.05,
       when: "beforeChildren",
-      ease: [0.2, 0.65, 0.3, 0.9],
+      ease: EASE,
     },
   },
   exit: {
     height: 0,
     opacity: 0,
     overflow: "hidden",
-    transition: { duration: 0.2, ease: [0.2, 0.65, 0.3, 0.9] },
+    transition: { duration: 0.2, ease: EASE },
   },
 }
 
-const subtaskVariants = {
+const subtaskVariants: Variants = {
   hidden: { opacity: 0, x: prefersReducedMotion ? 0 : -10 },
   visible: {
     opacity: 1,
     x: 0,
-    transition: {
-      type: prefersReducedMotion ? "tween" : "spring",
-      stiffness: 500,
-      damping: 25,
-      duration: prefersReducedMotion ? 0.2 : undefined,
-    },
+    transition: prefersReducedMotion
+      ? { type: "tween", duration: 0.2 }
+      : { type: "spring", stiffness: 500, damping: 25 },
   },
 }
 
-const subtaskDetailsVariants = {
+const subtaskDetailsVariants: Variants = {
   hidden: { opacity: 0, height: 0, overflow: "hidden" },
   visible: {
     opacity: 1,
     height: "auto",
     overflow: "visible",
-    transition: { duration: 0.25, ease: [0.2, 0.65, 0.3, 0.9] },
+    transition: { duration: 0.25, ease: EASE },
   },
   exit: {
     opacity: 0,
