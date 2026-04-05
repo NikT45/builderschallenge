@@ -460,8 +460,75 @@ const SectionHeading = ({ number, title }: { number: string; title: string }) =>
 
 // ─── Main Document ───────────────────────────────────────────────────────────
 
-export function DDReportPDF({ report }: { report: StructuredReport }) {
+// Defensive normalizer — guarantees all arrays/objects exist before rendering.
+// Agents submitting partial data or old-schema reports shouldn't crash the PDF.
+function normalize(r: StructuredReport): StructuredReport {
+  return {
+    company: r.company ?? { name: "Unknown", isPublic: false, description: "" },
+    executiveSummary: {
+      verdict: r.executiveSummary?.verdict ?? "Cautious",
+      verdictRationale: r.executiveSummary?.verdictRationale ?? "",
+      thesis: r.executiveSummary?.thesis ?? "",
+      keyPoints: r.executiveSummary?.keyPoints ?? [],
+      whatWouldChangeVerdict: r.executiveSummary?.whatWouldChangeVerdict ?? "",
+    },
+    financial: {
+      summary: r.financial?.summary ?? "",
+      keyMetrics: r.financial?.keyMetrics ?? [],
+      revenueHistory: r.financial?.revenueHistory ?? [],
+      profitability: r.financial?.profitability ?? { commentary: "" },
+      balanceSheet: r.financial?.balanceSheet ?? { commentary: "" },
+      cashFlow: r.financial?.cashFlow ?? { commentary: "" },
+      strengths: r.financial?.strengths ?? [],
+      concerns: r.financial?.concerns ?? [],
+      dataLimitations: r.financial?.dataLimitations,
+    },
+    market: {
+      summary: r.market?.summary ?? "",
+      positioning: r.market?.positioning ?? "Niche",
+      positioningRationale: r.market?.positioningRationale ?? "",
+      moat: r.market?.moat ?? { strength: "None", description: "", durability: "" },
+      competitors: r.market?.competitors ?? [],
+      tamEstimate: r.market?.tamEstimate,
+      tamRationale: r.market?.tamRationale,
+      marketTrends: r.market?.marketTrends ?? [],
+      porters: r.market?.porters ?? {
+        competitiveRivalry: "",
+        supplierPower: "",
+        buyerPower: "",
+        threatOfSubstitutes: "",
+        threatOfNewEntrants: "",
+      },
+    },
+    risk: {
+      summary: r.risk?.summary ?? "",
+      factors: r.risk?.factors ?? [],
+      redFlags: r.risk?.redFlags ?? [],
+      overallRiskLevel: r.risk?.overallRiskLevel ?? "Medium",
+    },
+    management: {
+      summary: r.management?.summary ?? "",
+      rating: r.management?.rating ?? "Adequate",
+      ratingRationale: r.management?.ratingRationale ?? "",
+      keyExecutives: r.management?.keyExecutives ?? [],
+      governance: r.management?.governance ?? { commentary: "" },
+      compensation: r.management?.compensation ?? "",
+      trackRecord: r.management?.trackRecord ?? "",
+      concerns: r.management?.concerns ?? [],
+    },
+    keyQuestions: r.keyQuestions ?? [],
+    sources: r.sources ?? [],
+    metadata: r.metadata ?? {
+      generatedAt: new Date().toISOString(),
+      dataSources: [],
+      confidenceNote: "",
+    },
+  }
+}
+
+export function DDReportPDF({ report: rawReport }: { report: StructuredReport }) {
   ensureFonts()
+  const report = normalize(rawReport)
   const { company, executiveSummary, financial, market, risk, management, keyQuestions, metadata } = report
   const generatedDate = new Date(metadata.generatedAt).toLocaleDateString("en-US", {
     year: "numeric",

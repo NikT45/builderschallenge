@@ -108,7 +108,12 @@ function TabBtn({ active, onClick, children }: { active: boolean; onClick: () =>
 // ─── On-screen Summary view (quick scan) ─────────────────────────────────────
 
 function SummaryView({ report }: { report: import("@/lib/types").StructuredReport }) {
-  const { company, executiveSummary, financial, market, risk, management, keyQuestions } = report
+  const executiveSummary = report.executiveSummary ?? { verdict: "Cautious" as const, verdictRationale: "", thesis: "", keyPoints: [], whatWouldChangeVerdict: "" }
+  const financial = report.financial ?? { summary: "", keyMetrics: [], revenueHistory: [], profitability: { commentary: "" }, balanceSheet: { commentary: "" }, cashFlow: { commentary: "" }, strengths: [], concerns: [] }
+  const market = report.market ?? { summary: "", positioning: "Niche" as const, positioningRationale: "", moat: { strength: "None" as const, description: "", durability: "" }, competitors: [], marketTrends: [], porters: { competitiveRivalry: "", supplierPower: "", buyerPower: "", threatOfSubstitutes: "", threatOfNewEntrants: "" } }
+  const risk = report.risk ?? { summary: "", factors: [], redFlags: [], overallRiskLevel: "Medium" as const }
+  const management = report.management ?? { summary: "", rating: "Adequate" as const, ratingRationale: "", keyExecutives: [], governance: { commentary: "" }, compensation: "", trackRecord: "", concerns: [] }
+  const keyQuestions = report.keyQuestions ?? []
 
   return (
     <div className="h-full overflow-y-auto">

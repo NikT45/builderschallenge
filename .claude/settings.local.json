@@ -3,7 +3,11 @@
     "allow": [
       "Bash(git:*)",
       "Bash(npm install:*)",
-      "Bash(tsc --version)"
+      "Bash(tsc --version)",
+      "Bash(brew list:*)",
+      "Bash(file /Users/nikolastanner/Coding/aiBuildersChallenge/builderschallenge/resources/*.pdf)",
+      "Bash(npx tsc:*)",
+      "Bash(echo \"exit: $?\")"
     ]
   }
 }
