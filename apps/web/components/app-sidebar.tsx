@@ -116,9 +116,17 @@ export function AppSidebar({ activeTab, onTabChange }: AppSidebarProps) {
           {/* Chats dropdown button */}
           <button
             onClick={() => setChatsOpen((o) => !o)}
-            className="group flex w-full items-center gap-2.5 rounded-[5px] px-2 py-[7px] text-[13px] text-muted-foreground transition-colors duration-100 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
+            className={cn(
+              "group relative flex w-full items-center gap-2.5 rounded-[5px] px-2 py-[7px] text-[13px] transition-colors duration-100",
+              chatsOpen
+                ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground"
+                : "text-muted-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
+            )}
           >
-            <ChatBubbleIcon className="size-4 shrink-0 text-muted-foreground/70 group-hover:text-muted-foreground" />
+            {chatsOpen && (
+              <span className="absolute bottom-1.5 left-0 top-1.5 w-[2px] rounded-full bg-primary" />
+            )}
+            <ChatBubbleIcon className={cn("size-4 shrink-0 transition-colors", chatsOpen ? "text-primary" : "text-muted-foreground/70 group-hover:text-muted-foreground")} />
             <span className="flex-1 text-left">Chats</span>
             <ChevronIcon
               className={cn("shrink-0 transition-transform duration-150", chatsOpen ? "rotate-0" : "-rotate-90")}
