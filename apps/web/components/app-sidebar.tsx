@@ -1,16 +1,11 @@
 "use client"
 
+import { useState } from "react"
 import { cn } from "@workspace/ui/lib/utils"
 
-export type Tab = "chat" | "reports" | "documents" | "settings"
+export type Tab = "reports" | "documents" | "settings"
 
-function ChatIcon({ className }: { className?: string }) {
-  return (
-    <svg className={cn("size-4", className)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-    </svg>
-  )
-}
+// ─── Icons ───────────────────────────────────────────────────────────────────
 
 function ReportsIcon({ className }: { className?: string }) {
   return (
@@ -41,58 +36,142 @@ function SettingsIcon({ className }: { className?: string }) {
   )
 }
 
+function ChevronIcon({ className }: { className?: string }) {
+  return (
+    <svg className={cn("size-3", className)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="6 9 12 15 18 9" />
+    </svg>
+  )
+}
+
+function ChatBubbleIcon({ className }: { className?: string }) {
+  return (
+    <svg className={cn("size-3.5", className)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+    </svg>
+  )
+}
+
+// ─── Sidebar ─────────────────────────────────────────────────────────────────
+
 interface AppSidebarProps {
-  activeTab: Tab
-  onTabChange: (tab: Tab) => void
+  activeTab: Tab | null
+  onTabChange: (tab: Tab | null) => void
 }
 
 const navItems: { id: Tab; label: string; Icon: React.FC<{ className?: string }> }[] = [
-  { id: "chat", label: "Chat", Icon: ChatIcon },
   { id: "reports", label: "Reports", Icon: ReportsIcon },
   { id: "documents", label: "Documents", Icon: DocumentsIcon },
 ]
 
+// Placeholder previous chats — will be real data later
+const previousChats: { id: string; title: string; date: string }[] = []
+
 export function AppSidebar({ activeTab, onTabChange }: AppSidebarProps) {
+  const [chatsOpen, setChatsOpen] = useState(true)
+
   return (
     <aside className="flex h-screen w-[220px] shrink-0 flex-col border-r border-sidebar-border bg-sidebar">
       {/* Wordmark */}
       <div className="flex h-[52px] items-center gap-2.5 border-b border-sidebar-border px-4">
-        <div className="flex size-6 items-center justify-center rounded-[4px] bg-primary">
-          <span className="text-[10px] font-bold leading-none text-primary-foreground">⬡</span>
-        </div>
-        <div className="leading-tight">
-          <p className="text-[13px] font-semibold tracking-tight text-sidebar-foreground">Anvil</p>
-          <p className="font-mono text-[10px] text-muted-foreground">AI · Research</p>
-        </div>
+        <button
+          onClick={() => onTabChange(null)}
+          className="flex items-center gap-2.5 transition-opacity hover:opacity-80"
+        >
+          <div className="flex size-6 items-center justify-center rounded-[4px] bg-primary">
+            <span className="text-[10px] font-bold leading-none text-primary-foreground">⬡</span>
+          </div>
+          <div className="leading-tight text-left">
+            <p className="text-[13px] font-semibold tracking-tight text-sidebar-foreground">Anvil</p>
+            <p className="font-mono text-[10px] text-muted-foreground">AI · Research</p>
+          </div>
+        </button>
       </div>
 
       {/* Main nav */}
-      <nav className="flex flex-1 flex-col gap-0.5 p-2 pt-3">
-{navItems.map(({ id, label, Icon }) => (
-          <button
-            key={id}
-            onClick={() => onTabChange(id)}
-            className={cn(
-              "group relative flex w-full items-center gap-2.5 rounded-[5px] px-2 py-[7px] text-[13px] transition-colors duration-100",
-              activeTab === id
-                ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground"
-                : "text-muted-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
-            )}
-          >
-            {activeTab === id && (
-              <span className="absolute bottom-1.5 left-0 top-1.5 w-[2px] rounded-full bg-primary" />
-            )}
-            <Icon
-              className={cn(
-                "transition-colors",
-                activeTab === id
-                  ? "text-primary"
-                  : "text-muted-foreground/70 group-hover:text-muted-foreground"
+      <nav className="flex flex-1 flex-col overflow-y-auto p-2 pt-3">
+
+        {/* ── Chats section ── */}
+        <div className="mb-1">
+          {/* Section header */}
+          <div className="flex items-center justify-between px-2 py-1">
+            <button
+              onClick={() => setChatsOpen((o) => !o)}
+              className="flex items-center gap-1.5 text-[11px] font-mono uppercase tracking-widest text-muted-foreground/60 transition-colors hover:text-muted-foreground"
+            >
+              <ChevronIcon
+                className={cn("transition-transform duration-150", chatsOpen ? "rotate-0" : "-rotate-90")}
+              />
+              Chats
+            </button>
+            <button
+              onClick={() => onTabChange(null)}
+              title="New chat"
+              className="flex size-5 items-center justify-center rounded text-muted-foreground/60 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
+            >
+              <svg className="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+            </button>
+          </div>
+
+          {/* Chat list */}
+          {chatsOpen && (
+            <div className="mt-0.5">
+              {previousChats.length === 0 ? (
+                <p className="px-3 py-2 font-mono text-[11px] text-muted-foreground/40">
+                  No previous chats
+                </p>
+              ) : (
+                previousChats.map((chat) => (
+                  <button
+                    key={chat.id}
+                    onClick={() => onTabChange(null)}
+                    className="group flex w-full items-center gap-2 rounded-[5px] px-2 py-[6px] text-left transition-colors hover:bg-sidebar-accent/60"
+                  >
+                    <ChatBubbleIcon className="shrink-0 text-muted-foreground/50" />
+                    <span className="flex-1 truncate font-mono text-[11px] text-muted-foreground group-hover:text-sidebar-foreground">
+                      {chat.title}
+                    </span>
+                  </button>
+                ))
               )}
-            />
-            {label}
-          </button>
-        ))}
+            </div>
+          )}
+        </div>
+
+        {/* ── Divider ── */}
+        <div className="my-2 border-t border-sidebar-border" />
+
+        {/* ── Reports & Documents ── */}
+        <div className="flex flex-col gap-0.5">
+          {navItems.map(({ id, label, Icon }) => (
+            <button
+              key={id}
+              onClick={() => onTabChange(id)}
+              className={cn(
+                "group relative flex w-full items-center gap-2.5 rounded-[5px] px-2 py-[7px] text-[13px] transition-colors duration-100",
+                activeTab === id
+                  ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground"
+                  : "text-muted-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
+              )}
+            >
+              {activeTab === id && (
+                <span className="absolute bottom-1.5 left-0 top-1.5 w-[2px] rounded-full bg-primary" />
+              )}
+              <Icon
+                className={cn(
+                  "transition-colors",
+                  activeTab === id
+                    ? "text-primary"
+                    : "text-muted-foreground/70 group-hover:text-muted-foreground"
+                )}
+              />
+              {label}
+            </button>
+          ))}
+        </div>
       </nav>
 
       {/* Settings pinned to bottom */}
