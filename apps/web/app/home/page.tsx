@@ -2,71 +2,13 @@
 
 import { useState } from "react"
 import { AppSidebar, type Tab } from "@/components/app-sidebar"
-
-// ─── New Chat (default home) ──────────────────────────────────────────────────
-
-function NewChatView() {
-  return (
-    <div className="flex h-full flex-col">
-      {/* Centered content */}
-      <div className="flex flex-1 flex-col items-center justify-center gap-6 px-6">
-        <div className="flex flex-col items-center gap-2 text-center">
-          <div className="flex size-10 items-center justify-center rounded-[6px] bg-primary">
-            <span className="text-sm font-bold text-primary-foreground">⬡</span>
-          </div>
-          <h1 className="text-[22px] font-semibold tracking-tight text-foreground">
-            What would you like to analyze?
-          </h1>
-          <p className="max-w-sm text-[13px] text-muted-foreground">
-            Ask about a company's financials, request a diligence report, or upload
-            documents for the agent to review.
-          </p>
-        </div>
-
-        {/* Input */}
-        <div className="w-full max-w-xl">
-          <div className="flex items-center gap-2 rounded-[8px] border border-border bg-background px-3 py-2.5 shadow-sm focus-within:ring-2 focus-within:ring-ring/40">
-            <input
-              autoFocus
-              className="flex-1 bg-transparent text-[13px] text-foreground placeholder:text-muted-foreground/60 focus:outline-none"
-              placeholder="Ask about a company, filing, or financial metric…"
-            />
-            <button className="flex size-7 items-center justify-center rounded-[4px] bg-primary transition-opacity hover:opacity-80">
-              <svg className="size-3.5 text-primary-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="22" y1="2" x2="11" y2="13" />
-                <polygon points="22 2 15 22 11 13 2 9 22 2" />
-              </svg>
-            </button>
-          </div>
-          <p className="mt-2 px-1 text-center font-mono text-[10px] text-muted-foreground/40">
-            Agent has access to SEC EDGAR, earnings transcripts, and uploaded documents.
-          </p>
-        </div>
-
-        {/* Suggested prompts */}
-        <div className="flex flex-wrap justify-center gap-2">
-          {[
-            "Summarize AAPL Q4 earnings",
-            "Red flags in latest 10-K",
-            "Compare margins vs peers",
-            "Generate diligence report",
-          ].map((prompt) => (
-            <button
-              key={prompt}
-              className="rounded-[5px] border border-border bg-muted px-3 py-1.5 font-mono text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
-            >
-              {prompt}
-            </button>
-          ))}
-        </div>
-      </div>
-    </div>
-  )
-}
+import { ChatView } from "@/components/chat-view"
+import { ReportViewer } from "@/components/report-viewer"
+import type { DDReport } from "@/lib/types"
 
 // ─── Reports ─────────────────────────────────────────────────────────────────
 
-function ReportsPanel() {
+function ReportsPanel({ reports, onOpen }: { reports: DDReport[]; onOpen: (r: DDReport) => void }) {
   return (
     <div className="flex h-full flex-col">
       <div className="flex h-[52px] items-center justify-between border-b border-border px-6">
@@ -74,34 +16,53 @@ function ReportsPanel() {
           <h1 className="text-[13px] font-semibold text-foreground">Reports</h1>
           <p className="font-mono text-[10px] text-muted-foreground">Saved diligence reports</p>
         </div>
-        <button className="rounded-[5px] border border-border bg-secondary px-3 py-1.5 font-mono text-[11px] text-secondary-foreground transition-colors hover:bg-muted">
-          Export
-        </button>
       </div>
 
-      <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
-        <div className="flex size-14 items-center justify-center rounded-full border border-border bg-muted">
-          <svg className="size-6 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-            <polyline points="14 2 14 8 20 8" />
-            <line x1="16" y1="13" x2="8" y2="13" />
-            <line x1="16" y1="17" x2="8" y2="17" />
-            <line x1="10" y1="9" x2="8" y2="9" />
-          </svg>
+      {reports.length === 0 ? (
+        <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
+          <div className="flex size-14 items-center justify-center rounded-full border border-border bg-muted">
+            <svg className="size-6 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+              <line x1="16" y1="13" x2="8" y2="13" />
+              <line x1="16" y1="17" x2="8" y2="17" />
+              <line x1="10" y1="9" x2="8" y2="9" />
+            </svg>
+          </div>
+          <div>
+            <p className="text-sm font-medium text-foreground">No reports yet</p>
+            <p className="mt-1 max-w-xs text-[12px] text-muted-foreground">
+              Ask the agent to run a due diligence report and it will appear here.
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <span className="rounded-[4px] border border-border bg-muted px-2 py-1 font-mono text-[10px] text-muted-foreground">PDF</span>
+            <span className="rounded-[4px] border border-border bg-muted px-2 py-1 font-mono text-[10px] text-muted-foreground">Markdown</span>
+          </div>
         </div>
-        <div>
-          <p className="text-sm font-medium text-foreground">No reports yet</p>
-          <p className="mt-1 max-w-xs text-[12px] text-muted-foreground">
-            Reports are generated when you ask the agent to produce a diligence
-            summary. They will appear here for review, export, or comparison.
-          </p>
+      ) : (
+        <div className="flex-1 overflow-y-auto px-4 py-4">
+          <div className="space-y-2">
+            {reports.map((r) => (
+              <button
+                key={r.reportId}
+                onClick={() => onOpen(r)}
+                className="group flex w-full items-center justify-between rounded-[7px] border border-border bg-card px-4 py-3 text-left transition-colors hover:bg-muted"
+              >
+                <div>
+                  <p className="text-[13px] font-medium text-foreground">{r.company}</p>
+                  <p className="font-mono text-[10px] text-muted-foreground">
+                    {new Date(r.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                  </p>
+                </div>
+                <svg className="size-4 text-muted-foreground/50 transition-colors group-hover:text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="9 18 15 12 9 6" />
+                </svg>
+              </button>
+            ))}
+          </div>
         </div>
-        <div className="flex gap-2">
-          <span className="rounded-[4px] border border-border bg-muted px-2 py-1 font-mono text-[10px] text-muted-foreground">PDF</span>
-          <span className="rounded-[4px] border border-border bg-muted px-2 py-1 font-mono text-[10px] text-muted-foreground">Markdown</span>
-          <span className="rounded-[4px] border border-border bg-muted px-2 py-1 font-mono text-[10px] text-muted-foreground">JSON</span>
-        </div>
-      </div>
+      )}
     </div>
   )
 }
@@ -120,7 +81,6 @@ function DocumentsPanel() {
           + Upload
         </button>
       </div>
-
       <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
         <div className="flex w-full max-w-sm flex-col items-center gap-4 rounded-[8px] border-2 border-dashed border-border bg-muted/30 px-8 py-10 transition-colors hover:border-primary/40 hover:bg-muted/50">
           <div className="flex size-12 items-center justify-center rounded-full bg-muted">
@@ -132,9 +92,7 @@ function DocumentsPanel() {
           </div>
           <div>
             <p className="text-[13px] font-medium text-foreground">Drop files here</p>
-            <p className="mt-0.5 text-[11px] text-muted-foreground">
-              PDFs, 10-Ks, earnings transcripts, Excel models
-            </p>
+            <p className="mt-0.5 text-[11px] text-muted-foreground">PDFs, 10-Ks, earnings transcripts, Excel models</p>
           </div>
           <button className="rounded-[5px] border border-border bg-background px-3 py-1.5 font-mono text-[11px] text-muted-foreground transition-colors hover:bg-muted">
             Browse files
@@ -159,13 +117,10 @@ function SettingsPanel() {
           <p className="font-mono text-[10px] text-muted-foreground">Preferences & API keys</p>
         </div>
       </div>
-
       <div className="flex-1 overflow-y-auto px-6 py-6">
         <div className="mx-auto max-w-lg space-y-8">
           <section>
-            <h2 className="mb-3 font-mono text-[11px] uppercase tracking-widest text-muted-foreground">
-              API Keys
-            </h2>
+            <h2 className="mb-3 font-mono text-[11px] uppercase tracking-widest text-muted-foreground">API Keys</h2>
             <div className="space-y-3 rounded-[7px] border border-border bg-card p-4">
               {[
                 { label: "Anthropic API Key", placeholder: "sk-ant-…" },
@@ -173,20 +128,13 @@ function SettingsPanel() {
               ].map(({ label, placeholder }) => (
                 <div key={label} className="space-y-1">
                   <label className="font-mono text-[11px] text-muted-foreground">{label}</label>
-                  <input
-                    type="password"
-                    placeholder={placeholder}
-                    className="w-full rounded-[5px] border border-border bg-background px-3 py-1.5 font-mono text-[12px] text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-2 focus:ring-ring/40"
-                  />
+                  <input type="password" placeholder={placeholder} className="w-full rounded-[5px] border border-border bg-background px-3 py-1.5 font-mono text-[12px] text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-2 focus:ring-ring/40" />
                 </div>
               ))}
             </div>
           </section>
-
           <section>
-            <h2 className="mb-3 font-mono text-[11px] uppercase tracking-widest text-muted-foreground">
-              Model
-            </h2>
+            <h2 className="mb-3 font-mono text-[11px] uppercase tracking-widest text-muted-foreground">Model</h2>
             <div className="space-y-2 rounded-[7px] border border-border bg-card p-4">
               <label className="font-mono text-[11px] text-muted-foreground">Claude Model</label>
               <select className="w-full rounded-[5px] border border-border bg-background px-3 py-1.5 font-mono text-[12px] text-foreground focus:outline-none focus:ring-2 focus:ring-ring/40">
@@ -196,33 +144,18 @@ function SettingsPanel() {
               </select>
             </div>
           </section>
-
           <section>
-            <h2 className="mb-3 font-mono text-[11px] uppercase tracking-widest text-muted-foreground">
-              Export Format
-            </h2>
+            <h2 className="mb-3 font-mono text-[11px] uppercase tracking-widest text-muted-foreground">Export Format</h2>
             <div className="space-y-2 rounded-[7px] border border-border bg-card p-4">
               <label className="font-mono text-[11px] text-muted-foreground">Default report format</label>
               <div className="flex gap-2">
                 {["Markdown", "PDF", "JSON"].map((fmt) => (
-                  <button
-                    key={fmt}
-                    className={`rounded-[5px] border px-3 py-1.5 font-mono text-[11px] transition-colors ${
-                      fmt === "Markdown"
-                        ? "border-primary bg-primary/10 text-primary"
-                        : "border-border bg-background text-muted-foreground hover:bg-muted"
-                    }`}
-                  >
-                    {fmt}
-                  </button>
+                  <button key={fmt} className={`rounded-[5px] border px-3 py-1.5 font-mono text-[11px] transition-colors ${fmt === "Markdown" ? "border-primary bg-primary/10 text-primary" : "border-border bg-background text-muted-foreground hover:bg-muted"}`}>{fmt}</button>
                 ))}
               </div>
             </div>
           </section>
-
-          <button className="w-full rounded-[5px] bg-primary py-2 font-mono text-[12px] font-medium text-primary-foreground transition-opacity hover:opacity-80">
-            Save settings
-          </button>
+          <button className="w-full rounded-[5px] bg-primary py-2 font-mono text-[12px] font-medium text-primary-foreground transition-opacity hover:opacity-80">Save settings</button>
         </div>
       </div>
     </div>
@@ -231,21 +164,39 @@ function SettingsPanel() {
 
 // ─── Home Page ────────────────────────────────────────────────────────────────
 
-const panels: Record<Tab, React.FC> = {
-  reports: ReportsPanel,
-  documents: DocumentsPanel,
-  settings: SettingsPanel,
-}
-
 export default function HomePage() {
   const [activeTab, setActiveTab] = useState<Tab | null>(null)
-  const ActivePanel = activeTab ? panels[activeTab] : NewChatView
+  const [reports, setReports] = useState<DDReport[]>([])
+  const [openReport, setOpenReport] = useState<DDReport | null>(null)
+
+  const handleReportComplete = (report: DDReport) => {
+    setReports((prev) => {
+      const exists = prev.some((r) => r.reportId === report.reportId)
+      return exists ? prev : [report, ...prev]
+    })
+  }
+
+  const handleOpenReport = (report: DDReport) => {
+    setOpenReport(report)
+    setActiveTab("reports")
+  }
+
+  const renderMain = () => {
+    if (activeTab === "reports") {
+      if (openReport) return <ReportViewer report={openReport} />
+      return <ReportsPanel reports={reports} onOpen={handleOpenReport} />
+    }
+    if (activeTab === "documents") return <DocumentsPanel />
+    if (activeTab === "settings") return <SettingsPanel />
+    // null = new chat / active chat
+    return <ChatView onReportComplete={handleReportComplete} />
+  }
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
-      <AppSidebar activeTab={activeTab} onTabChange={setActiveTab} />
+      <AppSidebar activeTab={activeTab} onTabChange={(tab) => { setActiveTab(tab); setOpenReport(null) }} />
       <main className="flex flex-1 flex-col overflow-hidden">
-        <ActivePanel />
+        {renderMain()}
       </main>
     </div>
   )
