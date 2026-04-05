@@ -1,6 +1,8 @@
 "use client"
 
 import { useRef, useEffect, useState } from "react"
+import ReactMarkdown from "react-markdown"
+import remarkGfm from "remark-gfm"
 import { cn } from "@workspace/ui/lib/utils"
 import { useChat } from "@/hooks/useChat"
 import { DDProgressOverlay } from "@/components/dd-progress-overlay"
@@ -115,7 +117,26 @@ export function ChatView({ onReportComplete }: ChatViewProps) {
                       : "bg-muted text-foreground"
                   )}
                 >
-                  {msg.content}
+                  {msg.role === "user" ? (
+                    msg.content
+                  ) : (
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
+                      components={{
+                        p: ({ children }) => <p className="mb-1.5 last:mb-0">{children}</p>,
+                        ul: ({ children }) => <ul className="mb-1.5 list-disc pl-4 last:mb-0">{children}</ul>,
+                        ol: ({ children }) => <ol className="mb-1.5 list-decimal pl-4 last:mb-0">{children}</ol>,
+                        li: ({ children }) => <li className="mb-0.5">{children}</li>,
+                        strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+                        code: ({ children }) => <code className="rounded bg-background/60 px-1 py-0.5 font-mono text-[11px]">{children}</code>,
+                        h1: ({ children }) => <h1 className="mb-1 mt-2 text-[14px] font-bold first:mt-0">{children}</h1>,
+                        h2: ({ children }) => <h2 className="mb-1 mt-2 text-[13px] font-semibold first:mt-0">{children}</h2>,
+                        h3: ({ children }) => <h3 className="mb-1 mt-1.5 text-[13px] font-medium first:mt-0">{children}</h3>,
+                      }}
+                    >
+                      {msg.content}
+                    </ReactMarkdown>
+                  )}
                   {msg.isStreaming && (
                     <span className="ml-0.5 inline-block h-3.5 w-0.5 animate-pulse rounded-full bg-current opacity-70" />
                   )}
