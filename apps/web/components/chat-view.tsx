@@ -98,7 +98,7 @@ export function ChatView({ onReportComplete, onOpenReportById, initialChatId = n
                 onChange={setInput}
                 onKeyDown={handleKeyDown}
                 onSend={handleSend}
-                isStreaming={isStreaming}
+                isStreaming={isStreaming || !!ddJobId}
                 autoFocus
               />
               <p className="mt-2 px-1 text-center font-mono text-[10px] text-muted-foreground/40">
@@ -236,7 +236,8 @@ export function ChatView({ onReportComplete, onOpenReportById, initialChatId = n
               onChange={setInput}
               onKeyDown={handleKeyDown}
               onSend={handleSend}
-              isStreaming={isStreaming}
+              isStreaming={isStreaming || !!ddJobId}
+              placeholder={ddJobId ? "Waiting for report to complete…" : undefined}
             />
           </div>
         </div>
@@ -252,9 +253,10 @@ interface ChatInputProps {
   onSend: () => void
   isStreaming: boolean
   autoFocus?: boolean
+  placeholder?: string
 }
 
-function ChatInput({ value, onChange, onKeyDown, onSend, isStreaming, autoFocus }: ChatInputProps) {
+function ChatInput({ value, onChange, onKeyDown, onSend, isStreaming, autoFocus, placeholder }: ChatInputProps) {
   return (
     <div className="flex items-center gap-2 rounded-[8px] border border-border bg-background px-3 py-2.5 shadow-sm focus-within:ring-2 focus-within:ring-ring/40">
       <input
@@ -264,7 +266,7 @@ function ChatInput({ value, onChange, onKeyDown, onSend, isStreaming, autoFocus 
         onKeyDown={onKeyDown}
         disabled={isStreaming}
         className="flex-1 bg-transparent text-[13px] text-foreground placeholder:text-muted-foreground/60 focus:outline-none disabled:opacity-50"
-        placeholder="Ask about a company, filing, or financial metric…"
+        placeholder={placeholder ?? "Ask about a company, filing, or financial metric…"}
       />
       <button
         onClick={onSend}

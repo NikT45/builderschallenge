@@ -94,6 +94,16 @@ export function useChat(initialChatId: string | null = null, onChatCreated?: (ch
         } else if (event.type === "dd_triggered") {
           setDdJobId(event.ddJobId)
           setDdCompany(event.company)
+          // If no text was streamed before the tool fired, inject a canned opener
+          if (!assistantContent) {
+            const canned = `On it — starting a full due diligence on **${event.company}**. I'll work through financials, market position, risk factors, and management. This takes a couple of minutes.`
+            assistantContent = canned
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === assistantMsg.id ? { ...m, content: canned } : m
+              )
+            )
+          }
         } else if (event.type === "done") {
           break
         } else if (event.type === "error") {
