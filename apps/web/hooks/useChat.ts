@@ -115,9 +115,10 @@ export function useChat(initialChatId: string | null = null, onChatCreated?: (ch
         console.error("Stream error:", err)
       }
     } finally {
+      const finalContent = assistantContent
       setMessages((prev) =>
         prev.map((m) =>
-          m.id === assistantMsg.id ? { ...m, isStreaming: false } : m
+          m.id === assistantMsg.id ? { ...m, content: finalContent || m.content, isStreaming: false } : m
         )
       )
       setIsStreaming(false)
