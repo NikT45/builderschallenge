@@ -524,9 +524,23 @@ function normalize(r: StructuredReport): StructuredReport {
       summary: r.financial?.summary ?? "",
       keyMetrics: arr(r.financial?.keyMetrics),
       revenueHistory: arr(r.financial?.revenueHistory),
-      profitability: r.financial?.profitability ?? { commentary: "" },
-      balanceSheet: r.financial?.balanceSheet ?? { commentary: "" },
-      cashFlow: r.financial?.cashFlow ?? { commentary: "" },
+      profitability: {
+        grossMargin: r.financial?.profitability?.grossMargin,
+        operatingMargin: r.financial?.profitability?.operatingMargin,
+        netMargin: r.financial?.profitability?.netMargin,
+        commentary: r.financial?.profitability?.commentary ?? "",
+      },
+      balanceSheet: {
+        cashPosition: r.financial?.balanceSheet?.cashPosition,
+        totalDebt: r.financial?.balanceSheet?.totalDebt,
+        netDebt: r.financial?.balanceSheet?.netDebt,
+        commentary: r.financial?.balanceSheet?.commentary ?? "",
+      },
+      cashFlow: {
+        operatingCashFlow: r.financial?.cashFlow?.operatingCashFlow,
+        freeCashFlow: r.financial?.cashFlow?.freeCashFlow,
+        commentary: r.financial?.cashFlow?.commentary ?? "",
+      },
       strengths: arr(r.financial?.strengths),
       concerns: arr(r.financial?.concerns),
       dataLimitations: r.financial?.dataLimitations,
@@ -535,7 +549,11 @@ function normalize(r: StructuredReport): StructuredReport {
       summary: r.market?.summary ?? "",
       positioning: r.market?.positioning ?? "Niche",
       positioningRationale: r.market?.positioningRationale ?? "",
-      moat: r.market?.moat ?? { strength: "None", description: "", durability: "" },
+      moat: {
+        strength: r.market?.moat?.strength ?? "None",
+        description: r.market?.moat?.description ?? "",
+        durability: r.market?.moat?.durability ?? "",
+      },
       competitors: arr(r.market?.competitors),
       tamEstimate: r.market?.tamEstimate,
       tamRationale: r.market?.tamRationale,
@@ -559,7 +577,12 @@ function normalize(r: StructuredReport): StructuredReport {
       rating: r.management?.rating ?? "Adequate",
       ratingRationale: r.management?.ratingRationale ?? "",
       keyExecutives: arr(r.management?.keyExecutives),
-      governance: r.management?.governance ?? { commentary: "" },
+      governance: {
+        insiderOwnership: r.management?.governance?.insiderOwnership,
+        boardIndependence: r.management?.governance?.boardIndependence,
+        shareStructure: r.management?.governance?.shareStructure,
+        commentary: r.management?.governance?.commentary ?? "",
+      },
       compensation: r.management?.compensation ?? "",
       trackRecord: r.management?.trackRecord ?? "",
       concerns: arr(r.management?.concerns),
@@ -989,7 +1012,7 @@ export function DDReportPDF({ report: rawReport }: { report: StructuredReport })
           </Text>
           {metadata.dataSources.map((x, i) => <Bullet key={i} text={x} />)}
           {metadata.confidenceNote && (
-            <Text style={[s.body, { marginTop: 10, color: C.textMuted }]}>{metadata.confidenceNote}</Text>
+            <Text style={[s.body, { marginTop: 10, color: C.textMuted }]}>{clean(metadata.confidenceNote)}</Text>
           )}
         </View>
 
