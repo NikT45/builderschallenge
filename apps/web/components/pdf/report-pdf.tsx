@@ -479,8 +479,9 @@ const arr = (v: unknown): any[] => (Array.isArray(v) ? v : [])
 
 // Strip markdown bold/italic markers and trim JSON artifacts that agents
 // sometimes leak into text fields (e.g. `"trackRecord": "..."`, trailing `}}]`).
-function clean(raw: string): string {
-  let t = raw
+function clean(raw: unknown): string {
+  if (raw == null) return ""
+  let t = typeof raw === "string" ? raw : String(raw)
   // Remove markdown bold/italic: **text** → text, *text* → text, __text__ → text
   t = t.replace(/\*\*(.+?)\*\*/g, "$1")
   t = t.replace(/\*(.+?)\*/g, "$1")
