@@ -6,7 +6,12 @@ export interface Message {
   role: "user" | "assistant"
   content: string
   isStreaming?: boolean
+  reportCard?: { reportId: string; company: string; verdict: "Favorable" | "Cautious" | "Unfavorable" }
 }
+
+// Sentinel prefix used to encode a report card into a persisted message's
+// content column so we don't need schema changes.
+export const REPORT_CARD_PREFIX = "[[report_card]]"
 
 export interface ChatSession {
   id: string

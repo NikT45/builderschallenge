@@ -1,9 +1,11 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { AppSidebar, type Tab } from "@/components/app-sidebar"
 import { ChatView } from "@/components/chat-view"
 import { ReportViewer } from "@/components/report-viewer"
+import { listReports, saveReport, listChats } from "@/lib/db"
+import type { ChatListItem } from "@/components/app-sidebar"
 import type { DDReport, Verdict } from "@/lib/types"
 
 // ─── Reports Panel ───────────────────────────────────────────────────────────
@@ -158,19 +160,67 @@ export default function HomePage() {
   const [activeTab, setActiveTab] = useState<Tab | null>(null)
   const [reports, setReports] = useState<DDReport[]>([])
   const [openReport, setOpenReport] = useState<DDReport | null>(null)
+  const [chats, setChats] = useState<ChatListItem[]>([])
+  const [selectedChatId, setSelectedChatId] = useState<string | null>(null)
+  // A version key forces ChatView to remount when user picks a different chat
+  // or starts a new chat, so useChat re-initializes with the new id.
+  const [chatKey, setChatKey] = useState(0)
 
-  const handleReportComplete = (report: DDReport) => {
-    setReports((prev) => {
-      const exists = prev.some((r) => r.reportId === report.reportId)
-      return exists ? prev : [report, ...prev]
-    })
-    setOpenReport(report)
-    setActiveTab("reports")
+  const refreshChats = () => {
+    listChats()
+      .then((rows) => setChats(rows.map((r) => ({ id: r.id, title: r.title }))))
+      .catch((e) => console.error("Failed to load chats:", e))
+  }
+
+  // Hydrate reports + chats from Supabase on mount
+  useEffect(() => {
+    listReports()
+      .then(setReports)
+      .catch((e) => console.error("Failed to load reports:", e))
+    refreshChats()
+  }, [])
+
+  const handleReportComplete = async (report: DDReport, chatId: string | null): Promise<DDReport> => {
+    // Persist to Supabase; use the returned id so it's stable
+    let saved = report
+    try {
+      const dbId = await saveReport(report, chatId)
+      saved = { ...report, reportId: dbId }
+    } catch (e) {
+      console.error("Failed to save report:", e)
+    }
+    setReports((prev) => (prev.some((r) => r.reportId === saved.reportId) ? prev : [saved, ...prev]))
+    return saved
+  }
+
+  const handleOpenReportById = (reportId: string) => {
+    const found = reports.find((r) => r.reportId === reportId)
+    if (found) {
+      setOpenReport(found)
+      setActiveTab("reports")
+    }
   }
 
   const handleOpenReport = (report: DDReport) => {
     setOpenReport(report)
     setActiveTab("reports")
+  }
+
+  const handleChatCreated = (newChatId: string) => {
+    setSelectedChatId(newChatId)
+    refreshChats()
+  }
+
+  const handleSelectChat = (id: string) => {
+    setSelectedChatId(id)
+    setChatKey((k) => k + 1)
+    setOpenReport(null)
+  }
+
+  const handleNewChat = () => {
+    setSelectedChatId(null)
+    setChatKey((k) => k + 1)
+    setOpenReport(null)
   }
 
   const renderMain = () => {
@@ -180,12 +230,27 @@ export default function HomePage() {
     }
     if (activeTab === "documents") return <DocumentsPanel />
     if (activeTab === "settings") return <SettingsPanel />
-    return <ChatView onReportComplete={handleReportComplete} />
+    return (
+      <ChatView
+        key={chatKey}
+        initialChatId={selectedChatId}
+        onChatCreated={handleChatCreated}
+        onReportComplete={handleReportComplete}
+        onOpenReportById={handleOpenReportById}
+      />
+    )
   }
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
-      <AppSidebar activeTab={activeTab} onTabChange={(tab) => { setActiveTab(tab); setOpenReport(null) }} />
+      <AppSidebar
+        activeTab={activeTab}
+        onTabChange={(tab) => { setActiveTab(tab); setOpenReport(null) }}
+        chats={chats}
+        activeChatId={selectedChatId}
+        onSelectChat={handleSelectChat}
+        onNewChat={handleNewChat}
+      />
       <main className="flex flex-1 flex-col overflow-hidden">
         {renderMain()}
       </main>

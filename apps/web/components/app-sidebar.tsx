@@ -54,9 +54,18 @@ function ChatBubbleIcon({ className }: { className?: string }) {
 
 // ─── Sidebar ─────────────────────────────────────────────────────────────────
 
+export interface ChatListItem {
+  id: string
+  title: string | null
+}
+
 interface AppSidebarProps {
   activeTab: Tab | null
   onTabChange: (tab: Tab | null) => void
+  chats?: ChatListItem[]
+  activeChatId?: string | null
+  onSelectChat?: (chatId: string) => void
+  onNewChat?: () => void
 }
 
 const navItems: { id: Tab; label: string; Icon: React.FC<{ className?: string }> }[] = [
@@ -64,10 +73,7 @@ const navItems: { id: Tab; label: string; Icon: React.FC<{ className?: string }>
   { id: "documents", label: "Documents", Icon: DocumentsIcon },
 ]
 
-// Placeholder previous chats — will be real data later
-const previousChats: { id: string; title: string; date: string }[] = []
-
-export function AppSidebar({ activeTab, onTabChange }: AppSidebarProps) {
+export function AppSidebar({ activeTab, onTabChange, chats = [], activeChatId, onSelectChat, onNewChat }: AppSidebarProps) {
   const [chatsOpen, setChatsOpen] = useState(true)
 
   return (
@@ -95,7 +101,7 @@ export function AppSidebar({ activeTab, onTabChange }: AppSidebarProps) {
         <div className="mb-1 flex flex-col gap-0.5">
           {/* New Chat button */}
           <button
-            onClick={() => onTabChange(null)}
+            onClick={() => { onNewChat?.(); onTabChange(null) }}
             className={cn(
               "group relative flex w-full items-center gap-2.5 rounded-[5px] px-2 py-[7px] text-[13px] transition-colors duration-100",
               activeTab === null
@@ -136,22 +142,31 @@ export function AppSidebar({ activeTab, onTabChange }: AppSidebarProps) {
           {/* Chat list */}
           {chatsOpen && (
             <div className="ml-2 mt-0.5 border-l border-sidebar-border pl-3">
-              {previousChats.length === 0 ? (
+              {chats.length === 0 ? (
                 <p className="py-2 font-mono text-[11px] text-muted-foreground/40">
                   No previous chats
                 </p>
               ) : (
-                previousChats.map((chat) => (
-                  <button
-                    key={chat.id}
-                    onClick={() => onTabChange(null)}
-                    className="group flex w-full items-center gap-2 rounded-[5px] px-2 py-[6px] text-left transition-colors hover:bg-sidebar-accent/60"
-                  >
-                    <span className="flex-1 truncate font-mono text-[11px] text-muted-foreground group-hover:text-sidebar-foreground">
-                      {chat.title}
-                    </span>
-                  </button>
-                ))
+                chats.map((chat) => {
+                  const isActive = chat.id === activeChatId
+                  return (
+                    <button
+                      key={chat.id}
+                      onClick={() => { onSelectChat?.(chat.id); onTabChange(null) }}
+                      className={cn(
+                        "group flex w-full items-center gap-2 rounded-[5px] px-2 py-[6px] text-left transition-colors",
+                        isActive ? "bg-sidebar-accent/80" : "hover:bg-sidebar-accent/60"
+                      )}
+                    >
+                      <span className={cn(
+                        "flex-1 truncate font-mono text-[11px]",
+                        isActive ? "text-sidebar-foreground" : "text-muted-foreground group-hover:text-sidebar-foreground"
+                      )}>
+                        {chat.title || "Untitled"}
+                      </span>
+                    </button>
+                  )
+                })
               )}
             </div>
           )}

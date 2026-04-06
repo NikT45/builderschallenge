@@ -9,7 +9,10 @@ import { DDProgressOverlay } from "@/components/dd-progress-overlay"
 import type { DDReport } from "@/lib/types"
 
 interface ChatViewProps {
-  onReportComplete: (report: DDReport) => void
+  onReportComplete: (report: DDReport, chatId: string | null) => Promise<DDReport>
+  onOpenReportById: (reportId: string) => void
+  initialChatId?: string | null
+  onChatCreated?: (chatId: string) => void
 }
 
 const SUGGESTED_PROMPTS = [
@@ -19,8 +22,8 @@ const SUGGESTED_PROMPTS = [
   "Compare MSFT vs GOOGL margins",
 ]
 
-export function ChatView({ onReportComplete }: ChatViewProps) {
-  const { messages, isStreaming, ddJobId, ddCompany, sendMessage, clearDdJob } = useChat()
+export function ChatView({ onReportComplete, onOpenReportById, initialChatId = null, onChatCreated }: ChatViewProps) {
+  const { messages, isStreaming, ddJobId, ddCompany, chatId, sendMessage, appendReportCard, clearDdJob } = useChat(initialChatId, onChatCreated)
   const [input, setInput] = useState("")
   const bottomRef = useRef<HTMLDivElement>(null)
 
@@ -43,9 +46,27 @@ export function ChatView({ onReportComplete }: ChatViewProps) {
     }
   }
 
-  const handleReportComplete = (report: DDReport) => {
-    onReportComplete(report)
-    clearDdJob()
+  const handleReportComplete = async (report: DDReport) => {
+    try {
+      const saved = await onReportComplete(report, chatId)
+      const verdict = saved.report.executiveSummary.verdict
+      const tone =
+        verdict === "Favorable" ? "The outlook looks promising." :
+        verdict === "Unfavorable" ? "There are some significant concerns worth reviewing." :
+        "There are a few things worth paying attention to."
+      appendReportCard(
+        {
+          reportId: saved.reportId,
+          company: saved.company,
+          verdict,
+        },
+        `I just finished the due diligence report for **${saved.company}**. ${tone} Click below to view the full report.`
+      )
+    } catch (e) {
+      console.error("Failed to handle report completion:", e)
+    } finally {
+      clearDdJob()
+    }
   }
 
   const isEmpty = messages.length === 0
@@ -101,7 +122,50 @@ export function ChatView({ onReportComplete }: ChatViewProps) {
         ) : (
           // Message thread
           <div className="mx-auto w-full max-w-2xl space-y-4 px-4 py-6">
-            {messages.map((msg) => (
+            {messages.map((msg) => {
+              // Report card message — render as a clickable card
+              if (msg.reportCard) {
+                const { reportId, company, verdict } = msg.reportCard
+                const verdictBg =
+                  verdict === "Favorable" ? "bg-green-600" :
+                  verdict === "Cautious" ? "bg-amber-600" :
+                  "bg-red-600"
+                return (
+                  <div key={msg.id} className="flex flex-col items-start gap-2">
+                    {msg.content && (
+                      <div className="max-w-[80%] rounded-[8px] bg-muted px-3.5 py-2.5 text-[13px] leading-relaxed text-foreground">
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
+                      </div>
+                    )}
+                    <button
+                      onClick={() => onOpenReportById(reportId)}
+                      className="group flex w-full max-w-md items-center gap-3 rounded-[8px] border border-border bg-card px-3.5 py-3 text-left shadow-sm transition-colors hover:bg-muted"
+                    >
+                      <div className="flex size-8 shrink-0 items-center justify-center rounded-[6px] border border-border bg-muted">
+                        <svg className="size-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                          <polyline points="14 2 14 8 20 8" />
+                        </svg>
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5">
+                          <p className="truncate text-[13px] font-semibold text-foreground">{company}</p>
+                          <span className={cn("rounded-[3px] px-1.5 py-0.5 font-mono text-[8px] font-bold uppercase tracking-wide text-white", verdictBg)}>
+                            {verdict}
+                          </span>
+                        </div>
+                        <p className="mt-0.5 font-mono text-[10px] text-muted-foreground">
+                          Due diligence report · Click to open
+                        </p>
+                      </div>
+                      <svg className="size-4 shrink-0 text-muted-foreground/50 transition-colors group-hover:text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="9 18 15 12 9 6" />
+                      </svg>
+                    </button>
+                  </div>
+                )
+              }
+              return (
               <div
                 key={msg.id}
                 className={cn(
@@ -142,7 +206,8 @@ export function ChatView({ onReportComplete }: ChatViewProps) {
                   )}
                 </div>
               </div>
-            ))}
+              )
+            })}
 
             {/* DD Progress inline */}
             {ddJobId && ddCompany && (
