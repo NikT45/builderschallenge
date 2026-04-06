@@ -8,6 +8,7 @@ import type { AgentName, AgentStatus, DDReport, CompanyProfile, StructuredReport
 interface AgentState {
   status: AgentStatus
   preview?: string
+  activities: string[]
 }
 
 interface DDProgressState {
@@ -21,12 +22,12 @@ interface DDProgressState {
 }
 
 const DEFAULT_AGENTS: Record<AgentName, AgentState> = {
-  intake: { status: "queued" },
-  financial: { status: "queued" },
-  market: { status: "queued" },
-  risk: { status: "queued" },
-  management: { status: "queued" },
-  synthesis: { status: "queued" },
+  intake: { status: "queued", activities: [] },
+  financial: { status: "queued", activities: [] },
+  market: { status: "queued", activities: [] },
+  risk: { status: "queued", activities: [] },
+  management: { status: "queued", activities: [] },
+  synthesis: { status: "queued", activities: [] },
 }
 
 const RECONNECT_DELAYS = [2000, 4000, 8000, 15000, 30000]
@@ -74,11 +75,25 @@ export function useDDProgress(jobId: string | null): DDProgressState {
 
           if (event.type === "intake_complete") {
             setState((s) => ({ ...s, profile: event.profile }))
+          } else if (event.type === "tool_activity") {
+            setState((s) => ({
+              ...s,
+              agents: {
+                ...s.agents,
+                [event.agent]: {
+                  ...s.agents[event.agent],
+                  activities: [...s.agents[event.agent].activities, event.description],
+                },
+              },
+            }))
           } else if (event.type === "agent_progress") {
             setState((s) => ({
               ...s,
               overallPct: Math.max(s.overallPct, event.overallPct),
-              agents: { ...s.agents, [event.agent]: { status: event.status, preview: event.preview } },
+              agents: {
+                ...s.agents,
+                [event.agent]: { ...s.agents[event.agent], status: event.status, preview: event.preview },
+              },
             }))
           } else if (event.type === "synthesis_started") {
             setState((s) => ({ ...s, synthesisStarted: true }))

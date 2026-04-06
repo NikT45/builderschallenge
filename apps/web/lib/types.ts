@@ -131,5 +131,6 @@ export type SSEEvent =
   | { type: "started"; jobId: string; company: string }
   | { type: "intake_complete"; profile: CompanyProfile }
   | { type: "agent_progress"; agent: AgentName; status: AgentStatus; overallPct: number; preview?: string }
+  | { type: "tool_activity"; agent: AgentName; tool: string; description: string }
   | { type: "synthesis_started" }
   | { type: "report_complete"; reportId: string; report: StructuredReport; company: string }
