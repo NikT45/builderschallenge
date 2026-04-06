@@ -132,26 +132,35 @@ export function DDProgressOverlay({ jobId, company, onComplete }: DDProgressOver
               className="overflow-hidden"
             >
               <div className="border-t border-border/50 px-3 py-2">
-                <ul className="space-y-0.5">
-                  {currentActivities.map((activity, i) => (
-                    <motion.li
-                      key={`${currentAgent}-${i}`}
-                      initial={{ opacity: 0, x: -8 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ duration: 0.15, delay: i * 0.02 }}
-                      className="flex items-center gap-2 py-0.5"
-                    >
-                      {i === currentActivities.length - 1 && isRunning ? (
-                        <span className="size-1 shrink-0 animate-pulse rounded-full bg-primary" />
-                      ) : (
-                        <span className="size-1 shrink-0 rounded-full bg-muted-foreground/30" />
-                      )}
-                      <span className="truncate font-mono text-[10px] text-muted-foreground">
-                        {activity}
-                      </span>
-                    </motion.li>
-                  ))}
-                </ul>
+                <div className="relative ml-[3px]">
+                  {/* Dashed line connecting all dots */}
+                  {currentActivities.length > 1 && (
+                    <div
+                      className="absolute left-[1.5px] top-[6px] w-px border-l border-dashed border-muted-foreground/25"
+                      style={{ height: `calc(100% - 12px)` }}
+                    />
+                  )}
+                  <ul className="space-y-0.5">
+                    {currentActivities.map((activity, i) => (
+                      <motion.li
+                        key={`${currentAgent}-${i}`}
+                        initial={{ opacity: 0, x: -8 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.15, delay: i * 0.02 }}
+                        className="relative flex items-center gap-2.5 py-0.5"
+                      >
+                        {i === currentActivities.length - 1 && isRunning ? (
+                          <span className="relative z-10 size-[5px] shrink-0 animate-pulse rounded-full bg-primary" />
+                        ) : (
+                          <span className="relative z-10 size-[5px] shrink-0 rounded-full bg-muted-foreground/30" />
+                        )}
+                        <span className="truncate font-mono text-[10px] text-muted-foreground">
+                          {activity}
+                        </span>
+                      </motion.li>
+                    ))}
+                  </ul>
+                </div>
               </div>
             </motion.div>
           )}
