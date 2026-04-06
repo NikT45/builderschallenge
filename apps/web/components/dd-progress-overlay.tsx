@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { useDDProgress } from "@/hooks/useDDProgress"
+import ShinyText from "@/components/ui/shiny-text"
 import type { AgentName, DDReport } from "@/lib/types"
 
 interface DDProgressOverlayProps {
@@ -42,7 +43,14 @@ export function DDProgressOverlay({ jobId, company, onComplete }: DDProgressOver
     <div className="w-full">
       {/* Shiny "Anvil is working" text */}
       <div className="mb-2 flex items-center gap-2 px-1">
-        <ShinyText text="Anvil is working" />
+        <ShinyText
+          text="Anvil is working"
+          speed={3}
+          color="#888888"
+          shineColor="#ffffff"
+          spread={100}
+          className="font-mono text-[11px] font-semibold tracking-wide"
+        />
         <span className="font-mono text-[10px] text-muted-foreground/60">
           {displayCompany}
         </span>
@@ -169,33 +177,3 @@ export function DDProgressOverlay({ jobId, company, onComplete }: DDProgressOver
   )
 }
 
-function ShinyText({ text }: { text: string }) {
-  return (
-    <motion.span
-      className="relative inline-block font-mono text-[11px] font-semibold tracking-wide text-foreground"
-    >
-      {text}
-      <motion.span
-        className="pointer-events-none absolute inset-0 font-mono text-[11px] font-semibold tracking-wide"
-        style={{
-          background: "linear-gradient(120deg, transparent 0%, transparent 30%, rgba(255,255,255,0.8) 50%, transparent 70%, transparent 100%)",
-          backgroundSize: "200% 100%",
-          WebkitBackgroundClip: "text",
-          WebkitTextFillColor: "transparent",
-          backgroundClip: "text",
-          mixBlendMode: "overlay",
-        }}
-        animate={{
-          backgroundPosition: ["100% 50%", "-100% 50%"],
-        }}
-        transition={{
-          duration: 2.5,
-          ease: "easeInOut",
-          repeat: Infinity,
-        }}
-      >
-        {text}
-      </motion.span>
-    </motion.span>
-  )
-}
