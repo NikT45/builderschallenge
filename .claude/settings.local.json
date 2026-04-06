@@ -7,7 +7,8 @@
       "Bash(brew list:*)",
       "Bash(file /Users/nikolastanner/Coding/aiBuildersChallenge/builderschallenge/resources/*.pdf)",
       "Bash(npx tsc:*)",
-      "Bash(echo \"exit: $?\")"
+      "Bash(echo \"exit: $?\")",
+      "Bash(npx --yes tsc --noEmit -p apps/web/tsconfig.json)"
     ]
   }
 }

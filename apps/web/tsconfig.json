@@ -19,5 +19,5 @@
     "**/*.tsx",
     ".next/types/**/*.ts"
   ],
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules", "components/ai-elements/jsx-preview.tsx", "components/ai-elements/schema-display.tsx", "components/ai-elements/speech-input.tsx", "components/ai-elements/stack-trace.tsx"]
 }

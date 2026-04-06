@@ -1,11 +1,14 @@
 "use client"
 
 import { useRef, useEffect, useState } from "react"
-import ReactMarkdown from "react-markdown"
-import remarkGfm from "remark-gfm"
 import { cn } from "@workspace/ui/lib/utils"
 import { useChat } from "@/hooks/useChat"
 import { DDProgressOverlay } from "@/components/dd-progress-overlay"
+import {
+  Message,
+  MessageContent,
+  MessageResponse,
+} from "@/components/ai-elements/message"
 import type { DDReport } from "@/lib/types"
 
 interface ChatViewProps {
@@ -27,14 +30,13 @@ export function ChatView({ onReportComplete, onOpenReportById, initialChatId = n
   const [input, setInput] = useState("")
   const bottomRef = useRef<HTMLDivElement>(null)
 
-  // Auto-scroll to bottom
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages])
 
   const handleSend = async () => {
     const text = input.trim()
-    if (!text || isStreaming) return
+    if (!text || isStreaming || ddJobId) return
     setInput("")
     await sendMessage(text)
   }
@@ -55,11 +57,7 @@ export function ChatView({ onReportComplete, onOpenReportById, initialChatId = n
         verdict === "Unfavorable" ? "There are some significant concerns worth reviewing." :
         "There are a few things worth paying attention to."
       appendReportCard(
-        {
-          reportId: saved.reportId,
-          company: saved.company,
-          verdict,
-        },
+        { reportId: saved.reportId, company: saved.company, verdict },
         `I just finished the due diligence report for **${saved.company}**. ${tone} Click below to view the full report.`
       )
     } catch (e) {
@@ -70,13 +68,12 @@ export function ChatView({ onReportComplete, onOpenReportById, initialChatId = n
   }
 
   const isEmpty = messages.length === 0
+  const isLocked = isStreaming || !!ddJobId
 
   return (
     <div className="flex h-full flex-col">
-      {/* Messages / Empty state */}
       <div className="flex-1 overflow-y-auto">
         {isEmpty ? (
-          // Centered new chat state
           <div className="flex h-full flex-col items-center justify-center gap-6 px-6">
             <div className="flex flex-col items-center gap-2 text-center">
               <div className="flex size-10 items-center justify-center rounded-[6px] bg-primary">
@@ -90,23 +87,19 @@ export function ChatView({ onReportComplete, onOpenReportById, initialChatId = n
                 documents for the agent to review.
               </p>
             </div>
-
-            {/* Input centered */}
             <div className="w-full max-w-xl">
               <ChatInput
                 value={input}
                 onChange={setInput}
                 onKeyDown={handleKeyDown}
                 onSend={handleSend}
-                isStreaming={isStreaming || !!ddJobId}
+                disabled={isLocked}
                 autoFocus
               />
               <p className="mt-2 px-1 text-center font-mono text-[10px] text-muted-foreground/40">
                 Agent has access to SEC EDGAR, earnings transcripts, and uploaded documents.
               </p>
             </div>
-
-            {/* Suggested prompts */}
             <div className="flex flex-wrap justify-center gap-2">
               {SUGGESTED_PROMPTS.map((prompt) => (
                 <button
@@ -120,10 +113,8 @@ export function ChatView({ onReportComplete, onOpenReportById, initialChatId = n
             </div>
           </div>
         ) : (
-          // Message thread
           <div className="mx-auto w-full max-w-2xl space-y-4 px-4 py-6">
             {messages.map((msg) => {
-              // Report card message — render as a clickable card
               if (msg.reportCard) {
                 const { reportId, company, verdict } = msg.reportCard
                 const verdictBg =
@@ -133,9 +124,11 @@ export function ChatView({ onReportComplete, onOpenReportById, initialChatId = n
                 return (
                   <div key={msg.id} className="flex flex-col items-start gap-2">
                     {msg.content && (
-                      <div className="max-w-[80%] rounded-[8px] bg-muted px-3.5 py-2.5 text-[13px] leading-relaxed text-foreground">
-                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
-                      </div>
+                      <Message from="assistant">
+                        <MessageContent>
+                          <MessageResponse>{msg.content}</MessageResponse>
+                        </MessageContent>
+                      </Message>
                     )}
                     <button
                       onClick={() => onOpenReportById(reportId)}
@@ -165,51 +158,25 @@ export function ChatView({ onReportComplete, onOpenReportById, initialChatId = n
                   </div>
                 )
               }
+
               return (
-              <div
-                key={msg.id}
-                className={cn(
-                  "flex",
-                  msg.role === "user" ? "justify-end" : "justify-start"
-                )}
-              >
-                <div
-                  className={cn(
-                    "max-w-[80%] rounded-[8px] px-3.5 py-2.5 text-[13px] leading-relaxed",
-                    msg.role === "user"
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted text-foreground"
-                  )}
-                >
-                  {msg.role === "user" ? (
-                    msg.content
-                  ) : (
-                    <ReactMarkdown
-                      remarkPlugins={[remarkGfm]}
-                      components={{
-                        p: ({ children }) => <p className="mb-1.5 last:mb-0">{children}</p>,
-                        ul: ({ children }) => <ul className="mb-1.5 list-disc pl-4 last:mb-0">{children}</ul>,
-                        ol: ({ children }) => <ol className="mb-1.5 list-decimal pl-4 last:mb-0">{children}</ol>,
-                        li: ({ children }) => <li className="mb-0.5">{children}</li>,
-                        strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
-                        code: ({ children }) => <code className="rounded bg-background/60 px-1 py-0.5 font-mono text-[11px]">{children}</code>,
-                        h1: ({ children }) => <h1 className="mb-1 mt-2 text-[14px] font-bold first:mt-0">{children}</h1>,
-                        h2: ({ children }) => <h2 className="mb-1 mt-2 text-[13px] font-semibold first:mt-0">{children}</h2>,
-                        h3: ({ children }) => <h3 className="mb-1 mt-1.5 text-[13px] font-medium first:mt-0">{children}</h3>,
-                      }}
-                    >
-                      {msg.content}
-                    </ReactMarkdown>
-                  )}
-                  {msg.isStreaming && (
-                    <span className="ml-0.5 inline-block h-3.5 w-0.5 animate-pulse rounded-full bg-current opacity-70" />
-                  )}
-                </div>
-              </div>
+                <Message key={msg.id} from={msg.role}>
+                  <MessageContent>
+                    {msg.role === "user" ? (
+                      msg.content
+                    ) : (
+                      <>
+                        <MessageResponse>{msg.content}</MessageResponse>
+                        {msg.isStreaming && (
+                          <span className="ml-0.5 inline-block h-3.5 w-0.5 animate-pulse rounded-full bg-current opacity-70" />
+                        )}
+                      </>
+                    )}
+                  </MessageContent>
+                </Message>
               )
             })}
 
-            {/* DD Progress inline */}
             {ddJobId && ddCompany && (
               <div className="flex justify-start">
                 <div className="w-full max-w-lg">
@@ -227,7 +194,6 @@ export function ChatView({ onReportComplete, onOpenReportById, initialChatId = n
         )}
       </div>
 
-      {/* Input — only shown at bottom when there are messages */}
       {!isEmpty && (
         <div className="border-t border-border p-4">
           <div className="mx-auto max-w-2xl">
@@ -236,7 +202,7 @@ export function ChatView({ onReportComplete, onOpenReportById, initialChatId = n
               onChange={setInput}
               onKeyDown={handleKeyDown}
               onSend={handleSend}
-              isStreaming={isStreaming || !!ddJobId}
+              disabled={isLocked}
               placeholder={ddJobId ? "Waiting for report to complete…" : undefined}
             />
           </div>
@@ -251,12 +217,12 @@ interface ChatInputProps {
   onChange: (v: string) => void
   onKeyDown: (e: React.KeyboardEvent) => void
   onSend: () => void
-  isStreaming: boolean
+  disabled: boolean
   autoFocus?: boolean
   placeholder?: string
 }
 
-function ChatInput({ value, onChange, onKeyDown, onSend, isStreaming, autoFocus, placeholder }: ChatInputProps) {
+function ChatInput({ value, onChange, onKeyDown, onSend, disabled, autoFocus, placeholder }: ChatInputProps) {
   return (
     <div className="flex items-center gap-2 rounded-[8px] border border-border bg-background px-3 py-2.5 shadow-sm focus-within:ring-2 focus-within:ring-ring/40">
       <input
@@ -264,24 +230,16 @@ function ChatInput({ value, onChange, onKeyDown, onSend, isStreaming, autoFocus,
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={onKeyDown}
-        disabled={isStreaming}
+        disabled={disabled}
         className="flex-1 bg-transparent text-[13px] text-foreground placeholder:text-muted-foreground/60 focus:outline-none disabled:opacity-50"
         placeholder={placeholder ?? "Ask about a company, filing, or financial metric…"}
       />
       <button
         onClick={onSend}
-        disabled={!value.trim() || isStreaming}
+        disabled={!value.trim() || disabled}
         className="flex size-7 items-center justify-center rounded-[4px] bg-primary transition-opacity hover:opacity-80 disabled:opacity-30"
       >
-        <svg
-          className="size-3.5 text-primary-foreground"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
+        <svg className="size-3.5 text-primary-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
           <line x1="22" y1="2" x2="11" y2="13" />
           <polygon points="22 2 15 22 11 13 2 9 22 2" />
         </svg>
