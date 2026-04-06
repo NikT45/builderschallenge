@@ -207,7 +207,9 @@ export default function HomePage() {
   }
 
   const handleChatCreated = (newChatId: string) => {
-    setSelectedChatId(newChatId)
+    // Do NOT call setSelectedChatId here — it would change initialChatId on the
+    // live ChatView, triggering the loadMessages effect and wiping in-progress state.
+    // The internal chatId inside useChat is already set; just refresh the sidebar.
     refreshChats()
   }
 

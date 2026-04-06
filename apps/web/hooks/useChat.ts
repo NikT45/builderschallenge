@@ -26,12 +26,17 @@ export function useChat(initialChatId: string | null = null, onChatCreated?: (ch
   const [chatId, setChatId] = useState<string | null>(initialChatId)
   const abortRef = useRef<AbortController | null>(null)
 
-  // Load history if we start with an existing chatId
+  // Load history if we start with an existing chatId.
+  // Guard: if messages are already in state (active session), don't wipe them.
   useEffect(() => {
     if (!initialChatId) return
-    loadMessages(initialChatId)
-      .then((loaded) => setMessages(loaded.map(decodeReportCard)))
-      .catch((e) => console.error("Failed to load messages:", e))
+    setMessages((prev) => {
+      if (prev.length > 0) return prev // active session — don't reload
+      loadMessages(initialChatId)
+        .then((loaded) => setMessages(loaded.map(decodeReportCard)))
+        .catch((e) => console.error("Failed to load messages:", e))
+      return prev
+    })
   }, [initialChatId])
 
   const sendMessage = useCallback(async (content: string) => {
