@@ -133,9 +133,15 @@ export function ChatView({ onReportComplete, onOpenReportById, initialChatId = n
           </div>
         )}
         {isEmpty ? (
-          <div className="flex h-full flex-col items-center justify-center gap-6 px-6">
-            <div className="flex flex-col items-center gap-2 text-center">
-              <h1 className="text-[22px] font-semibold tracking-tight text-foreground">
+          <div className="relative flex h-full flex-col items-center justify-center gap-8 overflow-hidden px-6">
+            {/* Background orbs */}
+            <div className="pointer-events-none absolute inset-0">
+              <div className="absolute left-[-10%] top-[20%] h-[360px] w-[560px] -translate-y-1/2 rounded-full bg-[var(--chart-1)] opacity-10 blur-[120px]" />
+              <div className="absolute bottom-[15%] right-[-10%] h-[300px] w-[480px] translate-y-1/2 rounded-full bg-[var(--primary)] opacity-15 blur-[100px]" />
+            </div>
+
+            <div className="relative flex flex-col items-center gap-3 text-center">
+              <h1 className="text-[26px] font-semibold tracking-tight text-foreground">
                 What would you like to analyze?
               </h1>
               <p className="max-w-sm text-[13px] text-muted-foreground">
@@ -143,7 +149,8 @@ export function ChatView({ onReportComplete, onOpenReportById, initialChatId = n
                 documents for the agent to review.
               </p>
             </div>
-            <div className="w-full max-w-xl">
+
+            <div className="relative w-full max-w-2xl">
               <ChatInput
                 value={input}
                 onChange={setInput}
@@ -156,12 +163,13 @@ export function ChatView({ onReportComplete, onOpenReportById, initialChatId = n
                 Agent has access to SEC EDGAR, earnings transcripts, and uploaded documents.
               </p>
             </div>
-            <div className="flex flex-wrap justify-center gap-2">
+
+            <div className="relative flex flex-wrap justify-center gap-2">
               {SUGGESTED_PROMPTS.map((prompt) => (
                 <button
                   key={prompt}
                   onClick={() => sendMessage(prompt)}
-                  className="rounded-[5px] border border-border bg-muted px-3 py-1.5 font-mono text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+                  className="border border-border bg-muted px-3 py-1.5 font-mono text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
                 >
                   {prompt}
                 </button>
@@ -223,9 +231,7 @@ export function ChatView({ onReportComplete, onOpenReportById, initialChatId = n
                     ) : (
                       <>
                         <MessageResponse>{msg.content}</MessageResponse>
-                        {msg.isStreaming && (
-                          <span className="ml-0.5 inline-block h-3.5 w-0.5 animate-pulse rounded-full bg-current opacity-70" />
-                        )}
+                        {msg.isStreaming && <StreamingDots />}
                       </>
                     )}
                   </MessageContent>
@@ -287,6 +293,26 @@ interface AutoDdRequest {
 const FINANCE_KEYWORDS = ["margin", "revenue", "profit", "cash", "compare", "valuation", "earnings", "financial", "analysis", "ratios", "filing", "10k", "10-q"]
 const TICKER_STOPWORDS = new Set(["THE", "AND", "WITH", "THIS", "THAT", "WHAT", "NEED", "PLEASE", "THANK", "STAT", "SHOW", "DATA", "ABOUT", "WANT"])
 
+function StreamingDots() {
+  return (
+    <span className="ml-1 inline-flex items-center gap-[3px]">
+      {[0, 1, 2].map((i) => (
+        <span
+          key={i}
+          className="inline-block size-1 rounded-full bg-muted-foreground/50"
+          style={{ animation: `streaming-dot 1.2s ease-in-out ${i * 0.2}s infinite` }}
+        />
+      ))}
+      <style>{`
+        @keyframes streaming-dot {
+          0%, 80%, 100% { opacity: 0.2; transform: scale(0.8); }
+          40% { opacity: 1; transform: scale(1); }
+        }
+      `}</style>
+    </span>
+  )
+}
+
 function extractTickers(text: string): string[] {
   const matches = text.toUpperCase().match(/\b[A-Z]{1,5}\b/g) ?? []
   return matches.filter((word) => word.length >= 2 && !TICKER_STOPWORDS.has(word))
@@ -304,7 +330,7 @@ interface ChatInputProps {
 
 function ChatInput({ value, onChange, onKeyDown, onSend, disabled, autoFocus, placeholder }: ChatInputProps) {
   return (
-    <div className="flex items-center gap-2 rounded-[8px] border border-border bg-background px-3 py-2.5 shadow-sm focus-within:ring-2 focus-within:ring-ring/40">
+    <div className="flex items-center gap-2 border border-border/50 bg-background px-3 py-2.5 transition-colors duration-150 hover:border-border focus-within:border-primary/40">
       <input
         autoFocus={autoFocus}
         value={value}
@@ -317,7 +343,7 @@ function ChatInput({ value, onChange, onKeyDown, onSend, disabled, autoFocus, pl
       <button
         onClick={onSend}
         disabled={!value.trim() || disabled}
-        className="flex size-7 items-center justify-center rounded-[4px] bg-gradient-to-b from-primary via-primary to-[var(--chart-3)] transition-opacity hover:opacity-80 disabled:opacity-30"
+        className="flex size-7 items-center justify-center bg-gradient-to-b from-primary via-primary to-[var(--chart-3)] transition-opacity hover:opacity-80 disabled:opacity-30"
       >
         <svg className="size-3.5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
           <line x1="22" y1="2" x2="11" y2="13" />
