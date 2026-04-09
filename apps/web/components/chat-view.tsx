@@ -308,7 +308,7 @@ function ChatInput({ value, onChange, onKeyDown, onSend, disabled, autoFocus, pl
       <button
         onClick={onSend}
         disabled={!value.trim() || disabled}
-        className="flex size-7 items-center justify-center rounded-[4px] bg-gradient-to-b from-[#7EE081] to-[#2563EB] transition-opacity hover:opacity-80 disabled:opacity-30"
+        className="flex size-7 items-center justify-center rounded-[4px] bg-gradient-to-b from-[#6BC782] via-[#3AA1C9] to-[#1D4ED8] transition-opacity hover:opacity-80 disabled:opacity-30"
       >
         <svg className="size-3.5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
           <line x1="22" y1="2" x2="11" y2="13" />
