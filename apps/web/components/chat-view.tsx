@@ -135,9 +135,6 @@ export function ChatView({ onReportComplete, onOpenReportById, initialChatId = n
         {isEmpty ? (
           <div className="flex h-full flex-col items-center justify-center gap-6 px-6">
             <div className="flex flex-col items-center gap-2 text-center">
-              <div className="flex size-10 items-center justify-center rounded-[6px] bg-primary">
-                <span className="text-sm font-bold text-primary-foreground">⬡</span>
-              </div>
               <h1 className="text-[22px] font-semibold tracking-tight text-foreground">
                 What would you like to analyze?
               </h1>
