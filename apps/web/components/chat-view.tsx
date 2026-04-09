@@ -26,18 +26,42 @@ const SUGGESTED_PROMPTS = [
 ]
 
 export function ChatView({ onReportComplete, onOpenReportById, initialChatId = null, onChatCreated }: ChatViewProps) {
-  const { messages, isStreaming, ddJobId, ddCompany, chatId, sendMessage, appendReportCard, clearDdJob } = useChat(initialChatId, onChatCreated)
+  const { messages, isStreaming, ddJobId, ddCompany, chatId, sendMessage, appendReportCard, clearDdJob, startDdJob } = useChat(initialChatId, onChatCreated)
   const [input, setInput] = useState("")
   const bottomRef = useRef<HTMLDivElement>(null)
+  const [autoDdQueue, setAutoDdQueue] = useState<AutoDdRequest[]>([])
+  const [autoDdRunning, setAutoDdRunning] = useState<AutoDdRequest | null>(null)
+  const [isStartingAutoDd, setIsStartingAutoDd] = useState(false)
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages])
 
+  useEffect(() => {
+    if (!ddJobId && !isStartingAutoDd && !autoDdRunning && autoDdQueue.length > 0) {
+      const [next, ...rest] = autoDdQueue
+      setAutoDdQueue(rest)
+      setIsStartingAutoDd(true)
+      startDdJob(next.company, next.prompt)
+        .then(() => setAutoDdRunning(next))
+        .catch((err) => {
+          console.error("Failed to start auto DD job:", err)
+        })
+        .finally(() => setIsStartingAutoDd(false))
+    }
+  }, [autoDdQueue, autoDdRunning, ddJobId, isStartingAutoDd, startDdJob])
+
+  useEffect(() => {
+    if (!ddJobId && autoDdRunning && !isStartingAutoDd) {
+      setAutoDdRunning(null)
+    }
+  }, [ddJobId, autoDdRunning, isStartingAutoDd])
+
   const handleSend = async () => {
     const text = input.trim()
     if (!text || isStreaming || ddJobId) return
     setInput("")
+    enqueueAutoDdIfNeeded(text)
     await sendMessage(text)
   }
 
@@ -46,6 +70,23 @@ export function ChatView({ onReportComplete, onOpenReportById, initialChatId = n
       e.preventDefault()
       handleSend()
     }
+  }
+
+  const enqueueAutoDdIfNeeded = (text: string) => {
+    const tickers = extractTickers(text)
+    if (tickers.length === 0) return
+    const lower = text.toLowerCase()
+    if (!FINANCE_KEYWORDS.some((kw) => lower.includes(kw))) return
+    setAutoDdQueue((prev) => {
+      const existing = new Set(prev.map((item) => item.company))
+      if (autoDdRunning) existing.add(autoDdRunning.company)
+      if (ddCompany) existing.add(ddCompany)
+      const additions = tickers
+        .filter((ticker) => !existing.has(ticker))
+        .map((ticker) => ({ company: ticker, prompt: text }))
+      if (additions.length === 0) return prev
+      return [...prev, ...additions]
+    })
   }
 
   const handleReportComplete = async (report: DDReport) => {
@@ -69,10 +110,27 @@ export function ChatView({ onReportComplete, onOpenReportById, initialChatId = n
 
   const isEmpty = messages.length === 0
   const isLocked = isStreaming || !!ddJobId
+  const autoDdQueuedTickers = Array.from(new Set(autoDdQueue.map((item) => item.company)))
+  const autoDdActiveTicker = autoDdRunning?.company ?? null
+  const showAutoDdBanner = Boolean(autoDdActiveTicker || autoDdQueuedTickers.length > 0)
 
   return (
     <div className="flex h-full flex-col">
       <div className="flex-1 overflow-y-auto">
+        {showAutoDdBanner && (
+          <div className="mx-auto mb-4 w-full max-w-2xl rounded-md border border-dashed border-border bg-muted/40 px-4 py-3 text-center text-[12px] text-muted-foreground">
+            {autoDdActiveTicker ? (
+              <span>
+                Running SEC-backed diligence for <strong>{autoDdActiveTicker}</strong>
+              </span>
+            ) : (
+              <span>Preparing diligence data…</span>
+            )}
+            {autoDdQueuedTickers.length > 0 && (
+              <span className="ml-2 text-[11px] text-muted-foreground/80">Queued: {autoDdQueuedTickers.join(", ")}</span>
+            )}
+          </div>
+        )}
         {isEmpty ? (
           <div className="flex h-full flex-col items-center justify-center gap-6 px-6">
             <div className="flex flex-col items-center gap-2 text-center">
@@ -210,6 +268,19 @@ export function ChatView({ onReportComplete, onOpenReportById, initialChatId = n
       )}
     </div>
   )
+}
+
+interface AutoDdRequest {
+  company: string
+  prompt: string
+}
+
+const FINANCE_KEYWORDS = ["margin", "revenue", "profit", "cash", "compare", "valuation", "earnings", "financial", "analysis", "ratios", "filing", "10k", "10-q"]
+const TICKER_STOPWORDS = new Set(["THE", "AND", "WITH", "THIS", "THAT", "WHAT", "NEED", "PLEASE", "THANK", "STAT", "SHOW", "DATA", "ABOUT", "WANT"])
+
+function extractTickers(text: string): string[] {
+  const matches = text.toUpperCase().match(/\b[A-Z]{1,5}\b/g) ?? []
+  return matches.filter((word) => word.length >= 2 && !TICKER_STOPWORDS.has(word))
 }
 
 interface ChatInputProps {

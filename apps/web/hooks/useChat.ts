@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect } from "react"
 import { v4 as uuidv4 } from "uuid"
-import { streamChat } from "@/lib/api"
+import { streamChat, triggerDD } from "@/lib/api"
 import { readSSEStream } from "@/lib/sse"
 import { createChat, addMessage, touchChat, updateChatTitle, loadMessages } from "@/lib/db"
 import { REPORT_CARD_PREFIX, type Message } from "@/lib/types"
@@ -16,6 +16,7 @@ interface UseChatReturn {
   sendMessage: (content: string) => Promise<void>
   appendReportCard: (card: { reportId: string; company: string; verdict: "Favorable" | "Cautious" | "Unfavorable" }, text?: string) => void
   clearDdJob: () => void
+  startDdJob: (company: string, context?: string) => Promise<void>
 }
 
 export function useChat(initialChatId: string | null = null, onChatCreated?: (chatId: string) => void): UseChatReturn {
@@ -163,7 +164,18 @@ export function useChat(initialChatId: string | null = null, onChatCreated?: (ch
     setDdCompany(null)
   }, [])
 
-  return { messages, isStreaming, ddJobId, ddCompany, chatId, sendMessage, appendReportCard, clearDdJob }
+  const startDdJob = useCallback(async (company: string, context?: string) => {
+    try {
+      const { ddJobId } = await triggerDD(company, context)
+      setDdJobId(ddJobId)
+      setDdCompany(company)
+    } catch (err) {
+      console.error("Failed to trigger due diligence job:", err)
+      throw err
+    }
+  }, [])
+
+  return { messages, isStreaming, ddJobId, ddCompany, chatId, sendMessage, appendReportCard, clearDdJob, startDdJob }
 }
 
 function decodeReportCard(m: Message): Message {
