@@ -1,10 +1,12 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { AppSidebar, type Tab } from "@/components/app-sidebar"
 import { ChatView } from "@/components/chat-view"
 import { ReportViewer } from "@/components/report-viewer"
 import { listReports, saveReport, listChats } from "@/lib/db"
+import { uploadDocument, listDocuments, deleteDocument, type DocumentItem } from "@/lib/api"
+import { createClient } from "@/utils/supabase/client"
 import type { ChatListItem } from "@/components/app-sidebar"
 import type { DDReport, Verdict } from "@/lib/types"
 
@@ -84,6 +86,50 @@ function VerdictPill({ verdict }: { verdict: Verdict }) {
 // ─── Documents ───────────────────────────────────────────────────────────────
 
 function DocumentsPanel() {
+  const [docs, setDocs] = useState<DocumentItem[]>([])
+  const [uploading, setUploading] = useState(false)
+  const [dragOver, setDragOver] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  const loadDocs = async () => {
+    try {
+      const supabase = createClient()
+      const { data } = await supabase.auth.getUser()
+      const items = await listDocuments(data.user?.id)
+      setDocs(Array.isArray(items) ? items : [])
+    } catch { /* silent */ }
+  }
+
+  useEffect(() => { loadDocs() }, [])
+
+  const handleFiles = async (files: FileList | null) => {
+    if (!files || files.length === 0) return
+    setUploading(true)
+    try {
+      const supabase = createClient()
+      const { data } = await supabase.auth.getUser()
+      for (const file of Array.from(files)) {
+        await uploadDocument(file, data.user?.id)
+      }
+      await loadDocs()
+    } catch (e) {
+      console.error("Upload failed:", e)
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  const handleDelete = async (id: string) => {
+    await deleteDocument(id)
+    setDocs((prev) => prev.filter((d) => d.id !== id))
+  }
+
+  const fmtSize = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+    return `${(bytes / 1024 / 1024).toFixed(1)} MB`
+  }
+
   return (
     <div className="flex h-full flex-col">
       <div className="flex h-[52px] items-center justify-between border-b border-border px-6">
@@ -91,30 +137,77 @@ function DocumentsPanel() {
           <h1 className="text-[13px] font-semibold text-foreground">Documents</h1>
           <p className="font-mono text-[10px] text-muted-foreground">Source files & filings</p>
         </div>
-        <button className="rounded-[5px] border border-border bg-secondary px-3 py-1.5 font-mono text-[11px] text-secondary-foreground transition-colors hover:bg-muted">
-          + Upload
+        <button
+          onClick={() => inputRef.current?.click()}
+          disabled={uploading}
+          className="rounded-[5px] border border-border bg-secondary px-3 py-1.5 font-mono text-[11px] text-secondary-foreground transition-colors hover:bg-muted disabled:opacity-50"
+        >
+          {uploading ? "Uploading…" : "+ Upload"}
         </button>
+        <input
+          ref={inputRef}
+          type="file"
+          multiple
+          accept=".pdf,.txt,.md,.csv,.json"
+          className="hidden"
+          onChange={(e) => handleFiles(e.target.files)}
+        />
       </div>
-      <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
-        <div className="flex w-full max-w-sm flex-col items-center gap-4 rounded-[8px] border-2 border-dashed border-border bg-muted/30 px-8 py-10 transition-colors hover:border-primary/40 hover:bg-muted/50">
-          <div className="flex size-12 items-center justify-center rounded-full bg-muted">
-            <svg className="size-5 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+
+      <div className="flex flex-1 flex-col overflow-y-auto p-6">
+        <div
+          onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={(e) => { e.preventDefault(); setDragOver(false); handleFiles(e.dataTransfer.files) }}
+          onClick={() => inputRef.current?.click()}
+          className={`mb-4 flex cursor-pointer flex-col items-center gap-3 rounded-[8px] border-2 border-dashed px-8 py-8 transition-colors ${
+            dragOver ? "border-primary/60 bg-primary/5" : "border-border bg-muted/20 hover:border-primary/40 hover:bg-muted/40"
+          }`}
+        >
+          <div className="flex size-10 items-center justify-center rounded-full bg-muted">
+            <svg className="size-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
               <polyline points="17 8 12 3 7 8" />
               <line x1="12" y1="3" x2="12" y2="15" />
             </svg>
           </div>
-          <div>
-            <p className="text-[13px] font-medium text-foreground">Drop files here</p>
-            <p className="mt-0.5 text-[11px] text-muted-foreground">PDFs, 10-Ks, earnings transcripts, Excel models</p>
+          <div className="text-center">
+            <p className="text-[12px] font-medium text-foreground">Drop files or click to browse</p>
+            <p className="mt-0.5 font-mono text-[10px] text-muted-foreground">PDF, TXT, MD, CSV, JSON</p>
           </div>
-          <button className="rounded-[5px] border border-border bg-background px-3 py-1.5 font-mono text-[11px] text-muted-foreground transition-colors hover:bg-muted">
-            Browse files
-          </button>
         </div>
-        <p className="max-w-xs font-mono text-[10px] text-muted-foreground/50">
-          Uploaded documents are indexed and made available to the agent during analysis.
-        </p>
+
+        {docs.length === 0 ? (
+          <p className="text-center font-mono text-[11px] text-muted-foreground/40">No documents uploaded yet</p>
+        ) : (
+          <div className="space-y-2">
+            {docs.map((doc) => (
+              <div key={doc.id} className="flex items-center gap-3 rounded-[6px] border border-border bg-card px-3 py-2.5">
+                <div className="flex size-7 shrink-0 items-center justify-center rounded-[4px] border border-border bg-muted">
+                  <svg className="size-3.5 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <polyline points="14 2 14 8 20 8" />
+                  </svg>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[12px] font-medium text-foreground">{doc.name}</p>
+                  <p className="font-mono text-[10px] text-muted-foreground">
+                    {fmtSize(doc.size)} · {new Date(doc.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                  </p>
+                </div>
+                <button
+                  onClick={() => handleDelete(doc.id)}
+                  className="flex size-6 items-center justify-center rounded-[4px] text-muted-foreground/50 transition-colors hover:bg-destructive/10 hover:text-destructive"
+                >
+                  <svg className="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )

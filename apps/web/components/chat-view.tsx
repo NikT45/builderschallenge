@@ -230,7 +230,14 @@ export function ChatView({ onReportComplete, onOpenReportById, initialChatId = n
                       msg.content
                     ) : (
                       <>
-                        <MessageResponse>{msg.content}</MessageResponse>
+                        <div
+                          onClick={(e) => {
+                            const anchor = (e.target as HTMLElement).closest("a")
+                            if (anchor?.href) { e.preventDefault(); window.open(anchor.href, "_blank", "noopener,noreferrer") }
+                          }}
+                        >
+                          <MessageResponse>{msg.content}</MessageResponse>
+                        </div>
                         {msg.isStreaming && <StreamingDots />}
                       </>
                     )}

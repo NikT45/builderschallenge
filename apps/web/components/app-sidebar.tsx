@@ -70,7 +70,7 @@ interface AppSidebarProps {
 
 const navItems: { id: Tab; label: string; Icon: React.FC<{ className?: string }> }[] = [
   { id: "reports", label: "Reports", Icon: ReportsIcon },
-  // { id: "documents", label: "Documents", Icon: DocumentsIcon },
+  { id: "documents", label: "Documents", Icon: DocumentsIcon },
 ]
 
 export function AppSidebar({ activeTab, onTabChange, chats = [], activeChatId, onSelectChat, onNewChat }: AppSidebarProps) {
