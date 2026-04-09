@@ -101,6 +101,16 @@ export function useChat(initialChatId: string | null = null, onChatCreated?: (ch
             )
           )
         } else if (event.type === "tool_activity") {
+          // Separate thought chunks with a blank line when content already exists
+          if (assistantContent && !assistantContent.endsWith("\n\n")) {
+            const sep = assistantContent.endsWith("\n") ? "\n" : "\n\n"
+            assistantContent += sep
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === assistantMsg.id ? { ...m, content: m.content + sep } : m
+              )
+            )
+          }
           setThinkingActivity(event.description)
         } else if (event.type === "dd_triggered") {
           setDdJobId(event.ddJobId)
