@@ -84,8 +84,10 @@ export function AppSidebar({ activeTab, onTabChange, chats = [], activeChatId, o
           onClick={() => onTabChange(null)}
           className="flex items-center gap-2.5 transition-opacity hover:opacity-80"
         >
-          <div className="flex size-6 items-center justify-center rounded-[4px] bg-primary">
-            <span className="text-[10px] font-bold leading-none text-primary-foreground">⬡</span>
+          <div className="flex size-6 items-center justify-center rounded-[4px] bg-gradient-to-b from-primary via-primary to-[var(--chart-3)]">
+            <svg className="size-3.5" viewBox="0 0 895 674" fill="none" overflow="visible" xmlns="http://www.w3.org/2000/svg">
+              <path d="M149.137 674H745.179C849.479 674 921.504 569.598 884.47 472.094L741.657 96.0942C719.685 38.2466 664.245 0 602.366 0H291.95C230.07 0 174.631 38.2465 152.659 96.0942L9.8462 472.094C-27.1878 569.598 44.8372 674 149.137 674Z" stroke="white" strokeWidth="120"/>
+            </svg>
           </div>
           <div className="leading-tight text-left">
             <p className="text-[13px] font-semibold tracking-tight text-sidebar-foreground">Anvil</p>

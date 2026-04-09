@@ -10,6 +10,7 @@ import { REPORT_CARD_PREFIX, type Message } from "@/lib/types"
 interface UseChatReturn {
   messages: Message[]
   isStreaming: boolean
+  thinkingActivity: string | null
   ddJobId: string | null
   ddCompany: string | null
   chatId: string | null
@@ -22,6 +23,7 @@ interface UseChatReturn {
 export function useChat(initialChatId: string | null = null, onChatCreated?: (chatId: string) => void): UseChatReturn {
   const [messages, setMessages] = useState<Message[]>([])
   const [isStreaming, setIsStreaming] = useState(false)
+  const [thinkingActivity, setThinkingActivity] = useState<string | null>(null)
   const [ddJobId, setDdJobId] = useState<string | null>(null)
   const [ddCompany, setDdCompany] = useState<string | null>(null)
   const [chatId, setChatId] = useState<string | null>(initialChatId)
@@ -89,6 +91,7 @@ export function useChat(initialChatId: string | null = null, onChatCreated?: (ch
 
       for await (const event of readSSEStream(response)) {
         if (event.type === "text_delta") {
+          setThinkingActivity(null)
           assistantContent += event.delta
           setMessages((prev) =>
             prev.map((m) =>
@@ -97,6 +100,8 @@ export function useChat(initialChatId: string | null = null, onChatCreated?: (ch
                 : m
             )
           )
+        } else if (event.type === "tool_activity") {
+          setThinkingActivity(event.description)
         } else if (event.type === "dd_triggered") {
           setDdJobId(event.ddJobId)
           setDdCompany(event.company)
@@ -127,6 +132,7 @@ export function useChat(initialChatId: string | null = null, onChatCreated?: (ch
           m.id === assistantMsg.id ? { ...m, content: finalContent || m.content, isStreaming: false } : m
         )
       )
+      setThinkingActivity(null)
       setIsStreaming(false)
 
       // Persist assistant message + bump chat updated_at
@@ -175,7 +181,7 @@ export function useChat(initialChatId: string | null = null, onChatCreated?: (ch
     }
   }, [])
 
-  return { messages, isStreaming, ddJobId, ddCompany, chatId, sendMessage, appendReportCard, clearDdJob, startDdJob }
+  return { messages, isStreaming, thinkingActivity, ddJobId, ddCompany, chatId, sendMessage, appendReportCard, clearDdJob, startDdJob }
 }
 
 function decodeReportCard(m: Message): Message {

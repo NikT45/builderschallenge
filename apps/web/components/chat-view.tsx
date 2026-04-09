@@ -9,6 +9,7 @@ import {
   MessageContent,
   MessageResponse,
 } from "@/components/ai-elements/message"
+import { Shimmer } from "@/components/ai-elements/shimmer"
 import type { DDReport } from "@/lib/types"
 
 interface ChatViewProps {
@@ -26,7 +27,7 @@ const SUGGESTED_PROMPTS = [
 ]
 
 export function ChatView({ onReportComplete, onOpenReportById, initialChatId = null, onChatCreated }: ChatViewProps) {
-  const { messages, isStreaming, ddJobId, ddCompany, chatId, sendMessage, appendReportCard, clearDdJob, startDdJob } = useChat(initialChatId, onChatCreated)
+  const { messages, isStreaming, thinkingActivity, ddJobId, ddCompany, chatId, sendMessage, appendReportCard, clearDdJob, startDdJob } = useChat(initialChatId, onChatCreated)
   const [input, setInput] = useState("")
   const bottomRef = useRef<HTMLDivElement>(null)
   const [autoDdQueue, setAutoDdQueue] = useState<AutoDdRequest[]>([])
@@ -235,6 +236,17 @@ export function ChatView({ onReportComplete, onOpenReportById, initialChatId = n
               )
             })}
 
+            {thinkingActivity && (
+              <div className="flex justify-start">
+                <div className="flex items-center gap-2 rounded-[8px] border border-border bg-muted/40 px-3 py-2">
+                  <span className="size-1.5 animate-pulse rounded-full bg-primary" />
+                  <Shimmer className="font-mono text-[11px]" duration={1.5}>
+                    {thinkingActivity}
+                  </Shimmer>
+                </div>
+              </div>
+            )}
+
             {ddJobId && ddCompany && (
               <div className="flex justify-start">
                 <div className="w-full max-w-lg">
@@ -308,7 +320,7 @@ function ChatInput({ value, onChange, onKeyDown, onSend, disabled, autoFocus, pl
       <button
         onClick={onSend}
         disabled={!value.trim() || disabled}
-        className="flex size-7 items-center justify-center rounded-[4px] bg-gradient-to-b from-[#6BC782] via-[#3AA1C9] to-[#1D4ED8] transition-opacity hover:opacity-80 disabled:opacity-30"
+        className="flex size-7 items-center justify-center rounded-[4px] bg-gradient-to-b from-primary via-primary to-[var(--chart-3)] transition-opacity hover:opacity-80 disabled:opacity-30"
       >
         <svg className="size-3.5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
           <line x1="22" y1="2" x2="11" y2="13" />
