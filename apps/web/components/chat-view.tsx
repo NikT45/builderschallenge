@@ -309,7 +309,7 @@ function StreamingDots() {
     return () => clearInterval(id)
   }, [])
   return (
-    <span className="ml-1 font-mono text-[13px] text-muted-foreground/60">
+    <span className="ml-1 bg-gradient-to-b from-primary via-primary to-[var(--chart-3)] bg-clip-text font-mono text-[24px] text-transparent">
       {BRAILLE_FRAMES[frame]}
     </span>
   )
