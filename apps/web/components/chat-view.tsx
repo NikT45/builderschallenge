@@ -300,22 +300,17 @@ interface AutoDdRequest {
 const FINANCE_KEYWORDS = ["margin", "revenue", "profit", "cash", "compare", "valuation", "earnings", "financial", "analysis", "ratios", "filing", "10k", "10-q"]
 const TICKER_STOPWORDS = new Set(["THE", "AND", "WITH", "THIS", "THAT", "WHAT", "NEED", "PLEASE", "THANK", "STAT", "SHOW", "DATA", "ABOUT", "WANT"])
 
+const BRAILLE_FRAMES = ["⠋","⠙","⠹","⠸","⠼","⠴","⠦","⠧","⠇","⠏"]
+
 function StreamingDots() {
+  const [frame, setFrame] = useState(0)
+  useEffect(() => {
+    const id = setInterval(() => setFrame((f) => (f + 1) % BRAILLE_FRAMES.length), 80)
+    return () => clearInterval(id)
+  }, [])
   return (
-    <span className="ml-1 inline-flex items-center gap-[3px]">
-      {[0, 1, 2].map((i) => (
-        <span
-          key={i}
-          className="inline-block size-1 rounded-full bg-muted-foreground/50"
-          style={{ animation: `streaming-dot 1.2s ease-in-out ${i * 0.2}s infinite` }}
-        />
-      ))}
-      <style>{`
-        @keyframes streaming-dot {
-          0%, 80%, 100% { opacity: 0.2; transform: scale(0.8); }
-          40% { opacity: 1; transform: scale(1); }
-        }
-      `}</style>
+    <span className="ml-1 font-mono text-[13px] text-muted-foreground/60">
+      {BRAILLE_FRAMES[frame]}
     </span>
   )
 }
