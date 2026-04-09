@@ -5,6 +5,7 @@ import { useState } from "react"
 import { cn } from "@workspace/ui/lib/utils"
 import { DDReportPDF } from "@/components/pdf/report-pdf"
 import type { DDReport, Severity, Verdict, MgmtRating, MoatStrength } from "@/lib/types"
+import { collectActionItems, collectSummaryGaps, pickMetrics, SUMMARY_KEYWORDS } from "@/lib/report-utils"
 
 // PDFDownloadLink needs to be client-only
 const PDFDownloadLink = dynamic(
@@ -114,6 +115,10 @@ function SummaryView({ report }: { report: import("@/lib/types").StructuredRepor
   const risk = report.risk ?? { summary: "", factors: [], redFlags: [], overallRiskLevel: "Medium" as const }
   const management = report.management ?? { summary: "", rating: "Adequate" as const, ratingRationale: "", keyExecutives: [], governance: { commentary: "" }, compensation: "", trackRecord: "", concerns: [] }
   const keyQuestions = report.keyQuestions ?? []
+  const valuationMetrics = pickMetrics(financial.keyMetrics, SUMMARY_KEYWORDS.valuation)
+  const growthMetrics = pickMetrics(financial.keyMetrics, SUMMARY_KEYWORDS.growth)
+  const actionItems = collectActionItems(risk, keyQuestions, 5)
+  const dataGaps = collectSummaryGaps(report)
 
   return (
     <div className="h-full overflow-y-auto">
@@ -155,6 +160,19 @@ function SummaryView({ report }: { report: import("@/lib/types").StructuredRepor
           </ul>
         </Section>
 
+        {actionItems.length > 0 && (
+          <Section title="Action Checklist">
+            <ul className="space-y-1.5">
+              {actionItems.map((item, i) => (
+                <li key={i} className="text-[12px] text-foreground/90">
+                  <span className="mr-2 font-mono text-[10px] text-muted-foreground">#{String(i + 1).padStart(2, "0")}</span>
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </Section>
+        )}
+
         {/* Financial snapshot */}
         {financial.keyMetrics.length > 0 && (
           <Section title="Financial Snapshot">
@@ -164,6 +182,27 @@ function SummaryView({ report }: { report: import("@/lib/types").StructuredRepor
                   <p className="font-mono text-[9px] uppercase tracking-wide text-muted-foreground">{m.label}</p>
                   <p className="mt-0.5 font-mono text-[15px] font-bold text-foreground">{m.value}</p>
                   {m.note && <p className="mt-0.5 text-[10px] text-muted-foreground">{m.note}</p>}
+                </div>
+              ))}
+            </div>
+          </Section>
+        )}
+
+        {(valuationMetrics.length > 0 || growthMetrics.length > 0) && (
+          <Section title="Valuation & Growth Signals">
+            <div className="grid grid-cols-2 gap-3">
+              {valuationMetrics.map((m, i) => (
+                <div key={`val-${i}`} className="rounded-[6px] border border-border bg-card px-3 py-2">
+                  <p className="font-mono text-[9px] uppercase tracking-wide text-muted-foreground">{m.label}</p>
+                  <p className="text-[14px] font-semibold text-foreground">{m.value}</p>
+                  {m.note && <p className="text-[10px] text-muted-foreground">{m.note}</p>}
+                </div>
+              ))}
+              {growthMetrics.map((m, i) => (
+                <div key={`growth-${i}`} className="rounded-[6px] border border-dashed border-border/70 bg-muted/20 px-3 py-2">
+                  <p className="font-mono text-[9px] uppercase tracking-wide text-muted-foreground">{m.label}</p>
+                  <p className="text-[14px] font-semibold text-foreground">{m.value}</p>
+                  {m.note && <p className="text-[10px] text-muted-foreground">{m.note}</p>}
                 </div>
               ))}
             </div>
@@ -207,6 +246,16 @@ function SummaryView({ report }: { report: import("@/lib/types").StructuredRepor
             ))}
           </ol>
         </Section>
+
+        {dataGaps.length > 0 && (
+          <Section title="Data Gaps">
+            <ul className="space-y-1.5 text-[12px] text-muted-foreground">
+              {dataGaps.map((gap, i) => (
+                <li key={i}>• {gap}</li>
+              ))}
+            </ul>
+          </Section>
+        )}
 
         {/* Meta */}
         <div className="mt-10 border-t border-border pt-4">

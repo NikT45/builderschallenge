@@ -2,6 +2,15 @@
 
 import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer"
 import type { StructuredReport, Severity, Verdict, MgmtRating, MoatStrength } from "@/lib/types"
+import {
+  KEYWORD_GROUPS,
+  cleanText,
+  collectActionItems,
+  collectDataGaps,
+  normalizeReport,
+  pickMetrics,
+  stringifyValue,
+} from "@/lib/report-utils"
 
 // ─── Palette ────────────────────────────────────────────────────────────────
 // Institutional tone: navy, charcoal, muted accents. No amber/forge/web-app colors.
@@ -28,7 +37,10 @@ const verdictColor = (v: Verdict) =>
   v === "Favorable" ? C.green : v === "Cautious" ? C.amber : C.red
 
 const severityColor = (s: Severity) =>
-  s === "Critical" ? C.red : s === "High" ? C.orange : s === "Medium" ? C.amber : C.green
+  s === "Critical" ? "#9F1D24" :
+  s === "High" ? "#B85333" :
+  s === "Medium" ? "#C87A1C" :
+  "#3A6F55"
 
 const ratingColor = (r: MgmtRating) =>
   r === "Exceptional" || r === "Strong" ? C.green : r === "Adequate" ? C.amber : C.red
@@ -234,6 +246,37 @@ const s = StyleSheet.create({
     lineHeight: 1.6,
   },
 
+  tocTitle: {
+    fontSize: 20,
+    fontFamily: "Helvetica-Bold",
+    color: C.charcoal,
+    marginBottom: 18,
+  },
+  tocList: {
+    marginTop: 6,
+  },
+  tocRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    marginBottom: 12,
+  },
+  tocNum: {
+    fontSize: 11,
+    fontFamily: "Helvetica-Bold",
+    color: C.navy,
+    width: 32,
+  },
+  tocLabel: {
+    fontSize: 12,
+    fontFamily: "Helvetica-Bold",
+    color: C.charcoal,
+  },
+  tocSummary: {
+    fontSize: 9,
+    color: C.textLight,
+    lineHeight: 1.45,
+  },
+
   // ── Subsections ──
   subhead: {
     fontSize: 10.5,
@@ -268,6 +311,40 @@ const s = StyleSheet.create({
     fontSize: 9.5,
     color: C.text,
     lineHeight: 1.55,
+  },
+
+  actionList: {
+    marginTop: 4,
+    marginBottom: 10,
+  },
+  actionRow: {
+    flexDirection: "row",
+    marginBottom: 6,
+  },
+  actionBadge: {
+    fontSize: 8,
+    fontFamily: "Helvetica-Bold",
+    color: C.white,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 2,
+    backgroundColor: C.navy,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    marginRight: 6,
+  },
+  actionText: {
+    flex: 1,
+    fontSize: 9.5,
+    color: C.text,
+    lineHeight: 1.45,
+  },
+
+  gapItem: {
+    fontSize: 9,
+    color: C.textMuted,
+    lineHeight: 1.4,
+    marginBottom: 4,
   },
 
   // ── Tables ──
@@ -308,6 +385,11 @@ const s = StyleSheet.create({
     color: C.text,
     lineHeight: 1.4,
   },
+  severityCell: {
+    width: "14%",
+    alignItems: "center",
+    justifyContent: "center",
+  },
 
   // ── Stat card (inline rating boxes) ──
   statRow: {
@@ -347,15 +429,17 @@ const s = StyleSheet.create({
     marginHorizontal: -5,
     marginBottom: 12,
   },
-  metricCard: {
-    width: "33.333%",
-    paddingHorizontal: 5,
+  metricRow: {
+    flexDirection: "row",
+    gap: 10,
     marginBottom: 10,
   },
-  metricInner: {
-    padding: 10,
+  metricCard: {
+    flex: 1,
+    padding: 12,
     borderWidth: 0.5,
     borderColor: C.rule,
+    minHeight: 86,
   },
   metricLabel: {
     fontSize: 7,
@@ -396,6 +480,23 @@ const s = StyleSheet.create({
     letterSpacing: 0.4,
     color: C.white,
     borderRadius: 1,
+  },
+
+  sourceTable: {
+    marginTop: 10,
+    borderWidth: 0.5,
+    borderColor: C.rule,
+  },
+  sourceRow: {
+    flexDirection: "row",
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderBottomWidth: 0.5,
+    borderBottomColor: C.ruleFaint,
+  },
+  sourceCell: {
+    fontSize: 8.5,
+    color: C.text,
   },
 
   // ── Thesis callout ──
@@ -442,7 +543,7 @@ const RunningChrome = ({ company, section }: { company: string; section: string 
 )
 
 const Bullet = ({ text }: { text: unknown }) => {
-  const val = str(text)
+  const val = stringifyValue(text)
   if (!val) return null
   return (
     <View style={s.bulletRow}>
@@ -454,7 +555,7 @@ const Bullet = ({ text }: { text: unknown }) => {
 
 // Wrap body text with clean() and skip empty
 const Body = ({ children, muted }: { children: string; muted?: boolean }) => {
-  const val = clean(children)
+  const val = cleanText(children)
   if (!val) return null
   return <Text style={muted ? [s.body, { color: C.textMuted }] : s.body}>{val}</Text>
 }
@@ -471,142 +572,51 @@ const SectionHead = ({ num, title }: { num: string; title: string }) => (
   </View>
 )
 
-// ─── Normalizer ─────────────────────────────────────────────────────────────
-
-// Force value to array — agents sometimes return objects, strings, or nulls
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const arr = (v: unknown): any[] => (Array.isArray(v) ? v : [])
-
-// Strip markdown bold/italic markers and trim JSON artifacts that agents
-// sometimes leak into text fields (e.g. `"trackRecord": "..."`, trailing `}}]`).
-function clean(raw: unknown): string {
-  if (raw == null) return ""
-  let t = typeof raw === "string" ? raw : String(raw)
-  // Remove markdown bold/italic: **text** → text, *text* → text, __text__ → text
-  t = t.replace(/\*\*(.+?)\*\*/g, "$1")
-  t = t.replace(/\*(.+?)\*/g, "$1")
-  t = t.replace(/__(.+?)__/g, "$1")
-  // Truncate at JSON structure leaking (agent concatenated fields)
-  const jsonLeak = t.search(/",\s*"[a-zA-Z]+"\s*:\s*[\["{]/)
-  if (jsonLeak > 20) t = t.slice(0, jsonLeak)
-  // Strip trailing JSON artifacts like }}] or "}]
-  t = t.replace(/["\s}\]]+$/, "").trim()
-  // Strip leading JSON artifacts like ["  or {"
-  t = t.replace(/^[\[{"]+\s*/, "").trim()
-  return t
+const snippet = (value: string, fallback: string) => {
+  const val = cleanText(value)
+  if (!val) return fallback
+  return val.length > 160 ? `${val.slice(0, 157)}…` : val
 }
 
-// Coerce anything (string, { text }, object) to a clean renderable string
-const str = (v: unknown): string => {
-  if (typeof v === "string") return clean(v)
-  if (typeof v === "object" && v !== null && "text" in v) return clean(String((v as { text: unknown }).text))
-  if (typeof v === "object" && v !== null) {
-    // Try to extract a meaningful string from common shapes
-    const o = v as Record<string, unknown>
-    if (typeof o.description === "string") return clean(o.description)
-    if (typeof o.name === "string") return clean(o.name)
-    return clean(JSON.stringify(v))
-  }
-  return String(v ?? "")
+
+const chunk = <T,>(items: T[], size: number): T[][] => {
+  const rows: T[][] = []
+  for (let i = 0; i < items.length; i += size) rows.push(items.slice(i, i + size))
+  return rows
 }
 
-function normalize(r: StructuredReport): StructuredReport {
-  return {
-    company: r.company ?? { name: "Unknown", isPublic: false, description: "" },
-    executiveSummary: {
-      verdict: r.executiveSummary?.verdict ?? "Cautious",
-      verdictRationale: r.executiveSummary?.verdictRationale ?? "",
-      thesis: r.executiveSummary?.thesis ?? "",
-      keyPoints: arr(r.executiveSummary?.keyPoints),
-      whatWouldChangeVerdict: r.executiveSummary?.whatWouldChangeVerdict ?? "",
-    },
-    financial: {
-      summary: r.financial?.summary ?? "",
-      keyMetrics: arr(r.financial?.keyMetrics),
-      revenueHistory: arr(r.financial?.revenueHistory),
-      profitability: {
-        grossMargin: r.financial?.profitability?.grossMargin,
-        operatingMargin: r.financial?.profitability?.operatingMargin,
-        netMargin: r.financial?.profitability?.netMargin,
-        commentary: r.financial?.profitability?.commentary ?? "",
-      },
-      balanceSheet: {
-        cashPosition: r.financial?.balanceSheet?.cashPosition,
-        totalDebt: r.financial?.balanceSheet?.totalDebt,
-        netDebt: r.financial?.balanceSheet?.netDebt,
-        commentary: r.financial?.balanceSheet?.commentary ?? "",
-      },
-      cashFlow: {
-        operatingCashFlow: r.financial?.cashFlow?.operatingCashFlow,
-        freeCashFlow: r.financial?.cashFlow?.freeCashFlow,
-        commentary: r.financial?.cashFlow?.commentary ?? "",
-      },
-      strengths: arr(r.financial?.strengths),
-      concerns: arr(r.financial?.concerns),
-      dataLimitations: r.financial?.dataLimitations,
-    },
-    market: {
-      summary: r.market?.summary ?? "",
-      positioning: r.market?.positioning ?? "Niche",
-      positioningRationale: r.market?.positioningRationale ?? "",
-      moat: {
-        strength: r.market?.moat?.strength ?? "None",
-        description: r.market?.moat?.description ?? "",
-        durability: r.market?.moat?.durability ?? "",
-      },
-      competitors: arr(r.market?.competitors),
-      tamEstimate: r.market?.tamEstimate,
-      tamRationale: r.market?.tamRationale,
-      marketTrends: arr(r.market?.marketTrends),
-      porters: r.market?.porters ?? {
-        competitiveRivalry: "",
-        supplierPower: "",
-        buyerPower: "",
-        threatOfSubstitutes: "",
-        threatOfNewEntrants: "",
-      },
-    },
-    risk: {
-      summary: r.risk?.summary ?? "",
-      factors: arr(r.risk?.factors),
-      redFlags: arr(r.risk?.redFlags),
-      overallRiskLevel: r.risk?.overallRiskLevel ?? "Medium",
-    },
-    management: {
-      summary: r.management?.summary ?? "",
-      rating: r.management?.rating ?? "Adequate",
-      ratingRationale: r.management?.ratingRationale ?? "",
-      keyExecutives: arr(r.management?.keyExecutives),
-      governance: {
-        insiderOwnership: r.management?.governance?.insiderOwnership,
-        boardIndependence: r.management?.governance?.boardIndependence,
-        shareStructure: r.management?.governance?.shareStructure,
-        commentary: r.management?.governance?.commentary ?? "",
-      },
-      compensation: r.management?.compensation ?? "",
-      trackRecord: r.management?.trackRecord ?? "",
-      concerns: arr(r.management?.concerns),
-    },
-    keyQuestions: arr(r.keyQuestions),
-    sources: arr(r.sources),
-    metadata: {
-      generatedAt: r.metadata?.generatedAt ?? new Date().toISOString(),
-      dataSources: arr(r.metadata?.dataSources),
-      confidenceNote: r.metadata?.confidenceNote ?? "",
-    },
-  }
-}
 
 // ─── Document ───────────────────────────────────────────────────────────────
 
 export function DDReportPDF({ report: rawReport }: { report: StructuredReport }) {
-  const report = normalize(rawReport)
+  const report = normalizeReport(rawReport)
   const { company, executiveSummary, financial, market, risk, management, keyQuestions, metadata } = report
   const generatedDate = new Date(metadata.generatedAt).toLocaleDateString("en-US", {
     year: "numeric",
     month: "long",
     day: "numeric",
   })
+  const actionItems = collectActionItems(risk, keyQuestions)
+  const dataGaps = collectDataGaps(report)
+  const valuationMetrics = pickMetrics(financial.keyMetrics, KEYWORD_GROUPS.valuation)
+  const growthMetrics = pickMetrics(financial.keyMetrics, KEYWORD_GROUPS.growth)
+  const marginMetrics = pickMetrics(financial.keyMetrics, KEYWORD_GROUPS.margin)
+  const efficiencyMetrics = pickMetrics(financial.keyMetrics, KEYWORD_GROUPS.efficiency)
+  const signalMetrics = [...growthMetrics, ...marginMetrics, ...efficiencyMetrics]
+  const outlineEntries = [
+    { num: "1", title: "Executive Summary", detail: snippet(executiveSummary.thesis, "Verdict and thesis overview") },
+    { num: "2", title: "Financial Analysis", detail: snippet(financial.summary, "Revenue quality, margin profile, cash generation") },
+    { num: "3", title: "Valuation & Scenario Analysis", detail: valuationMetrics.length > 0 ? `${valuationMetrics.length} valuation datapoints` : "Key multiples & cases" },
+    { num: "4", title: "Market & Competitors", detail: snippet(market.summary, "Positioning, moat, TAM") },
+    { num: "5", title: "Risk Assessment", detail: risk.factors.length ? `${risk.factors.length} enumerated risks` : "Pending" },
+    { num: "6", title: "Management & Governance", detail: snippet(management.summary, "Team quality & incentives") },
+    { num: "7", title: "Key Questions & Sources", detail: keyQuestions.length ? `${keyQuestions.length} diligence questions` : "Outstanding diligence" },
+  ]
+  const scenarioNotes = [
+    { label: "Base Case", text: executiveSummary.verdictRationale },
+    { label: "Upside", text: executiveSummary.whatWouldChangeVerdict },
+    { label: "Watchpoints", text: risk.summary },
+  ]
 
   return (
     <Document
@@ -678,13 +688,29 @@ export function DDReportPDF({ report: rawReport }: { report: StructuredReport })
         </View>
       </Page>
 
+      <Page size="LETTER" style={s.page}>
+        <RunningChrome company={company.name} section="Contents" />
+        <Text style={s.tocTitle}>Contents</Text>
+        <View style={s.tocList}>
+          {outlineEntries.map((entry) => (
+            <View key={entry.num} style={s.tocRow}>
+              <Text style={s.tocNum}>{entry.num}</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={s.tocLabel}>{entry.title}</Text>
+                <Text style={s.tocSummary}>{entry.detail}</Text>
+              </View>
+            </View>
+          ))}
+        </View>
+      </Page>
+
       {/* ═══════════════ 1. EXECUTIVE SUMMARY ═══════════════ */}
       <Page size="LETTER" style={s.page}>
         <RunningChrome company={company.name} section="Executive Summary" />
         <SectionHead num="1" title="Executive Summary" />
 
         <View style={s.thesisBlock}>
-          <Text style={s.thesisText}>{clean(executiveSummary.thesis)}</Text>
+          <Text style={s.thesisText}>{cleanText(executiveSummary.thesis)}</Text>
         </View>
 
         {/* Summary ratings row */}
@@ -715,13 +741,36 @@ export function DDReportPDF({ report: rawReport }: { report: StructuredReport })
           <Bullet key={i} text={p} />
         ))}
 
+        {actionItems.length > 0 && (
+          <>
+            <Text style={s.subhead}>Action Checklist</Text>
+            <View style={s.actionList}>
+              {actionItems.map((item, i) => (
+                <View key={i} style={s.actionRow}>
+                  <Text style={s.actionBadge}>{`#${i + 1}`}</Text>
+                  <Text style={s.actionText}>{item}</Text>
+                </View>
+              ))}
+            </View>
+          </>
+        )}
+
         <Text style={s.subhead}>What Would Change the Verdict</Text>
         <Body>{executiveSummary.whatWouldChangeVerdict}</Body>
+
+        {dataGaps.length > 0 && (
+          <>
+            <Text style={s.subhead}>Data Gaps / Follow-ups</Text>
+            {dataGaps.map((gap, i) => (
+              <Text key={i} style={s.gapItem}>• {gap}</Text>
+            ))}
+          </>
+        )}
 
         {metadata.confidenceNote && (
           <>
             <Text style={s.subhead}>Confidence Note</Text>
-            <Text style={[s.body, { color: C.textMuted }]}>{clean(metadata.confidenceNote)}</Text>
+            <Text style={[s.body, { color: C.textMuted }]}>{cleanText(metadata.confidenceNote)}</Text>
           </>
         )}
       </Page>
@@ -730,22 +779,23 @@ export function DDReportPDF({ report: rawReport }: { report: StructuredReport })
       <Page size="LETTER" style={s.page}>
         <RunningChrome company={company.name} section="Financial Analysis" />
         <SectionHead num="2" title="Financial Analysis" />
-        <Text style={s.sectionIntro}>{clean(financial.summary)}</Text>
+        <Text style={s.sectionIntro}>{cleanText(financial.summary)}</Text>
 
         {financial.keyMetrics.length > 0 && (
           <>
             <Text style={s.subhead}>Key Metrics</Text>
-            <View style={s.metricsGrid}>
-              {financial.keyMetrics.map((m, i) => (
-                <View key={i} style={s.metricCard}>
-                  <View style={s.metricInner}>
+            {chunk(financial.keyMetrics, 2).map((pair, rowIdx) => (
+              <View key={`metric-row-${rowIdx}`} style={s.metricRow}>
+                {pair.map((m, colIdx) => (
+                  <View key={`metric-${rowIdx}-${colIdx}`} style={s.metricCard}>
                     <Text style={s.metricLabel}>{m.label}</Text>
                     <Text style={s.metricValue}>{m.value}</Text>
                     {m.note && <Text style={s.metricNote}>{m.note}</Text>}
                   </View>
-                </View>
-              ))}
-            </View>
+                ))}
+                {pair.length === 1 && <View style={[s.metricCard, { opacity: 0 }]} />}
+              </View>
+            ))}
           </>
         )}
 
@@ -795,27 +845,90 @@ export function DDReportPDF({ report: rawReport }: { report: StructuredReport })
         {financial.dataLimitations && (
           <>
             <Text style={s.subhead}>Data Limitations</Text>
-            <Text style={[s.body, { color: C.textMuted }]}>{clean(financial.dataLimitations ?? "")}</Text>
+            <Text style={[s.body, { color: C.textMuted }]}>{cleanText(financial.dataLimitations ?? "")}</Text>
           </>
         )}
       </Page>
 
-      {/* ═══════════════ 3. MARKET & COMPETITION ═══════════════ */}
+      {/* ═══════════════ 3. VALUATION & SCENARIOS ═══════════════ */}
+      <Page size="LETTER" style={s.page}>
+        <RunningChrome company={company.name} section="Valuation & Scenarios" />
+        <SectionHead num="3" title="Valuation & Scenario Analysis" />
+        <Text style={s.sectionIntro}>
+          Snapshot of valuation datapoints supplied by the agent along with implied scenarios for diligence follow-up.
+        </Text>
+
+        {valuationMetrics.length > 0 ? (
+          <>
+            <Text style={s.subhead}>Valuation Snapshot</Text>
+            <View style={s.table}>
+              <View style={s.tableHead}>
+                <Text style={[s.tableHeadCell, { width: "40%" }]}>Metric</Text>
+                <Text style={[s.tableHeadCell, { width: "30%" }]}>Value</Text>
+                <Text style={[s.tableHeadCell, { width: "30%" }]}>Notes</Text>
+              </View>
+              {valuationMetrics.map((metric, i) => (
+                <View key={i} style={i % 2 === 0 ? s.tableRow : s.tableRowAlt}>
+                  <Text style={[s.tableCell, { width: "40%", fontFamily: "Helvetica-Bold" }]}>{metric.label}</Text>
+                  <Text style={[s.tableCell, { width: "30%" }]}>{metric.value}</Text>
+                  <Text style={[s.tableCell, { width: "30%", color: C.textLight }]}>{metric.note ?? "—"}</Text>
+                </View>
+              ))}
+            </View>
+          </>
+        ) : (
+          <Body muted>
+            No valuation metrics were provided. Re-run the diligence workflow with comps, targets, or multiples enabled to
+            populate this section.
+          </Body>
+        )}
+
+        {signalMetrics.length > 0 && (
+          <>
+            <Text style={s.subhead}>Growth & Margin Signals</Text>
+            {chunk(signalMetrics, 2).map((pair, rowIdx) => (
+              <View key={`signal-row-${rowIdx}`} style={s.metricRow}>
+                {pair.map((metric, colIdx) => (
+                  <View key={`signal-${rowIdx}-${colIdx}`} style={s.metricCard}>
+                    <Text style={s.metricLabel}>{metric.label}</Text>
+                    <Text style={s.metricValue}>{metric.value}</Text>
+                    {metric.note && <Text style={s.metricNote}>{metric.note}</Text>}
+                  </View>
+                ))}
+                {pair.length === 1 && <View style={[s.metricCard, { opacity: 0 }]} />}
+              </View>
+            ))}
+          </>
+        )}
+
+        <Text style={s.subhead}>Scenario Watchlist</Text>
+        {scenarioNotes.map((note, i) => (
+          <View key={i} style={s.bulletRow}>
+            <View style={s.bulletDot} />
+            <Text style={{ flex: 1 }}>
+              <Text style={{ fontFamily: "Helvetica-Bold" }}>{note.label}: </Text>
+              <Text>{cleanText(note.text) || "Pending deeper analysis."}</Text>
+            </Text>
+          </View>
+        ))}
+      </Page>
+
+      {/* ═══════════════ 4. MARKET & COMPETITION ═══════════════ */}
       <Page size="LETTER" style={s.page}>
         <RunningChrome company={company.name} section="Market & Competition" />
-        <SectionHead num="3" title="Market & Competitive Landscape" />
-        <Text style={s.sectionIntro}>{clean(market.summary)}</Text>
+        <SectionHead num="4" title="Market & Competitive Landscape" />
+        <Text style={s.sectionIntro}>{cleanText(market.summary)}</Text>
 
         <View style={s.statRow}>
           <View style={s.statBox}>
             <Text style={s.statLabel}>Market Positioning</Text>
             <Text style={[s.statValue, { color: C.navy }]}>{market.positioning}</Text>
-            <Text style={s.statNote}>{clean(market.positioningRationale)}</Text>
+            <Text style={s.statNote}>{cleanText(market.positioningRationale)}</Text>
           </View>
           <View style={s.statBox}>
             <Text style={s.statLabel}>Competitive Moat</Text>
             <Text style={[s.statValue, { color: moatColor(market.moat.strength) }]}>{market.moat.strength || "N/A"}</Text>
-            <Text style={s.statNote}>{clean(market.moat.description)}</Text>
+            <Text style={s.statNote}>{cleanText(market.moat.description)}</Text>
           </View>
         </View>
 
@@ -833,7 +946,7 @@ export function DDReportPDF({ report: rawReport }: { report: StructuredReport })
               {market.competitors.map((c, i) => (
                 <View key={i} style={i % 2 === 0 ? s.tableRow : s.tableRowAlt}>
                   <Text style={[s.tableCell, { width: "25%", fontFamily: "Helvetica-Bold" }]}>{c.name}</Text>
-                  <Text style={[s.tableCell, { width: "75%" }]}>{clean(c.relativePositioning ?? "")}</Text>
+                  <Text style={[s.tableCell, { width: "75%" }]}>{cleanText(c.relativePositioning ?? "")}</Text>
                 </View>
               ))}
             </View>
@@ -844,8 +957,8 @@ export function DDReportPDF({ report: rawReport }: { report: StructuredReport })
           <>
             <Text style={s.subhead}>Total Addressable Market</Text>
             <Text style={s.body}>
-              <Text style={{ fontFamily: "Helvetica-Bold" }}>{clean(String(market.tamEstimate))}</Text>
-              {market.tamRationale ? ` — ${clean(market.tamRationale)}` : ""}
+              <Text style={{ fontFamily: "Helvetica-Bold" }}>{cleanText(String(market.tamEstimate))}</Text>
+              {market.tamRationale ? ` — ${cleanText(market.tamRationale)}` : ""}
             </Text>
           </>
         )}
@@ -864,7 +977,7 @@ export function DDReportPDF({ report: rawReport }: { report: StructuredReport })
             ["Buyer Power", market.porters.buyerPower],
             ["Threat of Substitutes", market.porters.threatOfSubstitutes],
             ["Threat of New Entrants", market.porters.threatOfNewEntrants],
-          ].filter(([, val]) => clean(String(val ?? "")))
+          ].filter(([, val]) => cleanText(String(val ?? "")))
           if (!forces.length) return null
           return (
             <>
@@ -877,7 +990,7 @@ export function DDReportPDF({ report: rawReport }: { report: StructuredReport })
                 {forces.map(([name, val], i) => (
                   <View key={i} style={i % 2 === 0 ? s.tableRow : s.tableRowAlt}>
                     <Text style={[s.tableCell, { width: "30%", fontFamily: "Helvetica-Bold" }]}>{name}</Text>
-                    <Text style={[s.tableCell, { width: "70%" }]}>{clean(String(val ?? ""))}</Text>
+                    <Text style={[s.tableCell, { width: "70%" }]}>{cleanText(String(val ?? ""))}</Text>
                   </View>
                 ))}
               </View>
@@ -886,11 +999,11 @@ export function DDReportPDF({ report: rawReport }: { report: StructuredReport })
         })()}
       </Page>
 
-      {/* ═══════════════ 4. RISK ASSESSMENT ═══════════════ */}
+      {/* ═══════════════ 5. RISK ASSESSMENT ═══════════════ */}
       <Page size="LETTER" style={s.page}>
         <RunningChrome company={company.name} section="Risk Assessment" />
-        <SectionHead num="4" title="Risk Assessment" />
-        <Text style={s.sectionIntro}>{clean(risk.summary)}</Text>
+        <SectionHead num="5" title="Risk Assessment" />
+        <Text style={s.sectionIntro}>{cleanText(risk.summary)}</Text>
 
         <View style={[s.statRow, { gap: 0 }]}>
           <View style={[s.statBox, { flex: 0, width: 140 }]}>
@@ -906,17 +1019,17 @@ export function DDReportPDF({ report: rawReport }: { report: StructuredReport })
               <View style={s.tableHead}>
                 <Text style={[s.tableHeadCell, { width: "18%" }]}>Category</Text>
                 <Text style={[s.tableHeadCell, { width: "22%" }]}>Risk</Text>
-                <Text style={[s.tableHeadCell, { width: "12%" }]}>Severity</Text>
-                <Text style={[s.tableHeadCell, { width: "48%" }]}>Description</Text>
+                <Text style={[s.tableHeadCell, { width: "14%", textAlign: "center" }]}>Severity</Text>
+                <Text style={[s.tableHeadCell, { width: "46%" }]}>Description</Text>
               </View>
               {risk.factors.map((f, i) => (
                 <View key={i} style={i % 2 === 0 ? s.tableRow : s.tableRowAlt}>
                   <Text style={[s.tableCell, { width: "18%", fontSize: 8.5 }]}>{f.category}</Text>
                   <Text style={[s.tableCell, { width: "22%", fontFamily: "Helvetica-Bold", fontSize: 8.5 }]}>{f.name}</Text>
-                  <View style={{ width: "12%", justifyContent: "center" }}>
+                  <View style={s.severityCell}>
                     <Badge text={f.severity} color={severityColor(f.severity)} />
                   </View>
-                  <Text style={[s.tableCell, { width: "48%", fontSize: 8.5 }]}>{clean(f.description)}</Text>
+                  <Text style={[s.tableCell, { width: "46%", fontSize: 8.5 }]}>{cleanText(f.description)}</Text>
                 </View>
               ))}
             </View>
@@ -928,24 +1041,24 @@ export function DDReportPDF({ report: rawReport }: { report: StructuredReport })
             <Text style={s.subhead}>Red Flags</Text>
             {risk.redFlags.map((r, i) => (
               <View key={i} style={s.redFlagRow}>
-                <Text style={s.bulletText}>{str(r)}</Text>
+                <Text style={s.bulletText}>{stringifyValue(r)}</Text>
               </View>
             ))}
           </>
         )}
       </Page>
 
-      {/* ═══════════════ 5. MANAGEMENT ═══════════════ */}
+      {/* ═══════════════ 6. MANAGEMENT ═══════════════ */}
       <Page size="LETTER" style={s.page}>
         <RunningChrome company={company.name} section="Management & Governance" />
-        <SectionHead num="5" title="Management & Governance" />
-        <Text style={s.sectionIntro}>{clean(management.summary)}</Text>
+        <SectionHead num="6" title="Management & Governance" />
+        <Text style={s.sectionIntro}>{cleanText(management.summary)}</Text>
 
         <View style={s.statRow}>
           <View style={s.statBox}>
             <Text style={s.statLabel}>Management Rating</Text>
             <Text style={[s.statValue, { color: ratingColor(management.rating) }]}>{management.rating}</Text>
-            <Text style={s.statNote}>{clean(management.ratingRationale)}</Text>
+            <Text style={s.statNote}>{cleanText(management.ratingRationale)}</Text>
           </View>
         </View>
 
@@ -954,17 +1067,17 @@ export function DDReportPDF({ report: rawReport }: { report: StructuredReport })
             <Text style={s.subhead}>Key Executives</Text>
             <View style={s.table}>
               <View style={s.tableHead}>
-                <Text style={[s.tableHeadCell, { width: "22%" }]}>Name</Text>
-                <Text style={[s.tableHeadCell, { width: "20%" }]}>Title</Text>
-                <Text style={[s.tableHeadCell, { width: "10%" }]}>Tenure</Text>
-                <Text style={[s.tableHeadCell, { width: "48%" }]}>Background</Text>
+                <Text style={[s.tableHeadCell, { width: "20%" }]}>Name</Text>
+                <Text style={[s.tableHeadCell, { width: "24%" }]}>Title</Text>
+                <Text style={[s.tableHeadCell, { width: "14%" }]}>Tenure</Text>
+                <Text style={[s.tableHeadCell, { width: "42%" }]}>Background</Text>
               </View>
               {management.keyExecutives.map((e, i) => (
                 <View key={i} style={i % 2 === 0 ? s.tableRow : s.tableRowAlt}>
-                  <Text style={[s.tableCell, { width: "22%", fontFamily: "Helvetica-Bold", fontSize: 8.5 }]}>{e.name}</Text>
-                  <Text style={[s.tableCell, { width: "20%", fontSize: 8.5 }]}>{e.title}</Text>
-                  <Text style={[s.tableCell, { width: "10%", fontSize: 8.5 }]}>{e.tenure ?? "—"}</Text>
-                  <Text style={[s.tableCell, { width: "48%", fontSize: 8.5 }]}>{clean(e.background)}</Text>
+                  <Text style={[s.tableCell, { width: "20%", fontFamily: "Helvetica-Bold", fontSize: 9 }]}>{e.name}</Text>
+                  <Text style={[s.tableCell, { width: "24%", fontSize: 9 }]}>{e.title}</Text>
+                  <Text style={[s.tableCell, { width: "14%", fontSize: 9 }]}>{e.tenure ?? "—"}</Text>
+                  <Text style={[s.tableCell, { width: "42%", fontSize: 8.8 }]}>{cleanText(e.background)}</Text>
                 </View>
               ))}
             </View>
@@ -988,10 +1101,10 @@ export function DDReportPDF({ report: rawReport }: { report: StructuredReport })
         )}
       </Page>
 
-      {/* ═══════════════ 6. KEY QUESTIONS & APPENDIX ═══════════════ */}
+      {/* ═══════════════ 7. KEY QUESTIONS & APPENDIX ═══════════════ */}
       <Page size="LETTER" style={s.page}>
         <RunningChrome company={company.name} section="Key Questions" />
-        <SectionHead num="6" title="Key Questions for Management" />
+        <SectionHead num="7" title="Key Questions for Management" />
         <Text style={s.sectionIntro}>
           Critical questions an investor should address with management before committing capital.
         </Text>
@@ -1001,7 +1114,7 @@ export function DDReportPDF({ report: rawReport }: { report: StructuredReport })
             <Text style={{ width: 24, fontSize: 9.5, fontFamily: "Helvetica-Bold", color: C.navy }}>
               {i + 1}.
             </Text>
-            <Text style={{ flex: 1, fontSize: 9.5, color: C.text, lineHeight: 1.55 }}>{str(q)}</Text>
+            <Text style={{ flex: 1, fontSize: 9.5, color: C.text, lineHeight: 1.55 }}>{stringifyValue(q)}</Text>
           </View>
         ))}
 
@@ -1011,8 +1124,19 @@ export function DDReportPDF({ report: rawReport }: { report: StructuredReport })
             This report synthesizes data from the following sources:
           </Text>
           {metadata.dataSources.map((x, i) => <Bullet key={i} text={x} />)}
+          {report.sources.length > 0 && (
+            <View style={s.sourceTable}>
+              {report.sources.map((src, i) => (
+                <View key={i} style={s.sourceRow}>
+                  <Text style={[s.sourceCell, { width: "30%", fontFamily: "Helvetica-Bold" }]}>{src.type.toUpperCase()}</Text>
+                  <Text style={[s.sourceCell, { width: "45%" }]}>{src.label}</Text>
+                  <Text style={[s.sourceCell, { width: "25%", color: C.textMuted }]}>{src.url ?? "—"}</Text>
+                </View>
+              ))}
+            </View>
+          )}
           {metadata.confidenceNote && (
-            <Text style={[s.body, { marginTop: 10, color: C.textMuted }]}>{clean(metadata.confidenceNote)}</Text>
+            <Text style={[s.body, { marginTop: 10, color: C.textMuted }]}>{cleanText(metadata.confidenceNote)}</Text>
           )}
         </View>
 
