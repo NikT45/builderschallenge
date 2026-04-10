@@ -389,10 +389,6 @@ export default function LoginPage() {
           </button>
         </form>
 
-        {/* Bottom note */}
-        <p className="mt-8 font-mono text-[10px] text-muted-foreground/40">
-          Your research is private and encrypted.
-        </p>
       </div>
 
       <style>{`
