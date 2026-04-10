@@ -9,7 +9,7 @@ export default defineConfig({
     environment: "node",
     reporters: "default",
     coverage: {
-      reports: ["text", "lcov"],
+      reporter: ["text", "lcov"],
     },
   },
   resolve: {

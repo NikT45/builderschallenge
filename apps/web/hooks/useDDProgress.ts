@@ -75,14 +75,15 @@ export function useDDProgress(jobId: string | null): DDProgressState {
 
           if (event.type === "intake_complete") {
             setState((s) => ({ ...s, profile: event.profile }))
-          } else if (event.type === "tool_activity") {
+          } else if (event.type === "tool_activity" && event.agent) {
+            const agent = event.agent
             setState((s) => ({
               ...s,
               agents: {
                 ...s.agents,
-                [event.agent]: {
-                  ...s.agents[event.agent],
-                  activities: [...s.agents[event.agent].activities, event.description],
+                [agent]: {
+                  ...s.agents[agent],
+                  activities: [...s.agents[agent].activities, event.description],
                 },
               },
             }))
