@@ -93,9 +93,7 @@ function DocumentsPanel() {
 
   const loadDocs = async () => {
     try {
-      const supabase = createClient()
-      const { data } = await supabase.auth.getUser()
-      const items = await listDocuments(data.user?.id)
+      const items = await listDocuments()
       setDocs(Array.isArray(items) ? items : [])
     } catch { /* silent */ }
   }
@@ -106,10 +104,8 @@ function DocumentsPanel() {
     if (!files || files.length === 0) return
     setUploading(true)
     try {
-      const supabase = createClient()
-      const { data } = await supabase.auth.getUser()
       for (const file of Array.from(files)) {
-        await uploadDocument(file, data.user?.id)
+        await uploadDocument(file)
       }
       await loadDocs()
     } catch (e) {
@@ -314,7 +310,6 @@ export default function HomePage() {
   const [openReport, setOpenReport] = useState<DDReport | null>(null)
   const [chats, setChats] = useState<ChatListItem[]>([])
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null)
-  const [userId, setUserId] = useState<string | undefined>(undefined)
   // A version key forces ChatView to remount when user picks a different chat
   // or starts a new chat, so useChat re-initializes with the new id.
   const [chatKey, setChatKey] = useState(0)
@@ -331,10 +326,6 @@ export default function HomePage() {
       .then(setReports)
       .catch((e) => console.error("Failed to load reports:", e))
     refreshChats()
-    const supabase = createClient()
-    supabase.auth.getUser().then(({ data }) => {
-      if (data.user?.id) setUserId(data.user.id)
-    })
   }, [])
 
   const handleReportComplete = async (report: DDReport, chatId: string | null): Promise<DDReport> => {
@@ -396,7 +387,6 @@ export default function HomePage() {
         onChatCreated={handleChatCreated}
         onReportComplete={handleReportComplete}
         onOpenReportById={handleOpenReportById}
-        userId={userId}
       />
     )
   }

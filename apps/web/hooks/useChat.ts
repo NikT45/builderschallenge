@@ -20,7 +20,7 @@ interface UseChatReturn {
   startDdJob: (company: string, context?: string) => Promise<void>
 }
 
-export function useChat(initialChatId: string | null = null, onChatCreated?: (chatId: string) => void, userId?: string): UseChatReturn {
+export function useChat(initialChatId: string | null = null, onChatCreated?: (chatId: string) => void): UseChatReturn {
   const [messages, setMessages] = useState<Message[]>([])
   const [isStreaming, setIsStreaming] = useState(false)
   const [thinkingActivity, setThinkingActivity] = useState<string | null>(null)
@@ -86,7 +86,7 @@ export function useChat(initialChatId: string | null = null, onChatCreated?: (ch
     let assistantContent = ""
 
     try {
-      const response = await streamChat(nextMessages, userId)
+      const response = await streamChat(nextMessages)
       if (!response.ok) throw new Error(`HTTP ${response.status}`)
 
       for await (const event of readSSEStream(response)) {
@@ -182,7 +182,7 @@ export function useChat(initialChatId: string | null = null, onChatCreated?: (ch
 
   const startDdJob = useCallback(async (company: string, context?: string) => {
     try {
-      const { ddJobId } = await triggerDD(company, context, userId)
+      const { ddJobId } = await triggerDD(company, context)
       setDdJobId(ddJobId)
       setDdCompany(company)
     } catch (err) {

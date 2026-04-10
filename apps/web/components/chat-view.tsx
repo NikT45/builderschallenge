@@ -17,7 +17,6 @@ interface ChatViewProps {
   onOpenReportById: (reportId: string) => void
   initialChatId?: string | null
   onChatCreated?: (chatId: string) => void
-  userId?: string
 }
 
 const SUGGESTED_PROMPTS = [
@@ -27,8 +26,8 @@ const SUGGESTED_PROMPTS = [
   "Compare MSFT vs GOOGL margins",
 ]
 
-export function ChatView({ onReportComplete, onOpenReportById, initialChatId = null, onChatCreated, userId }: ChatViewProps) {
-  const { messages, isStreaming, thinkingActivity, ddJobId, ddCompany, chatId, sendMessage, appendReportCard, clearDdJob, startDdJob } = useChat(initialChatId, onChatCreated, userId)
+export function ChatView({ onReportComplete, onOpenReportById, initialChatId = null, onChatCreated }: ChatViewProps) {
+  const { messages, isStreaming, thinkingActivity, ddJobId, ddCompany, chatId, sendMessage, appendReportCard, clearDdJob, startDdJob } = useChat(initialChatId, onChatCreated)
   const [input, setInput] = useState("")
   const bottomRef = useRef<HTMLDivElement>(null)
   const [autoDdQueue, setAutoDdQueue] = useState<AutoDdRequest[]>([])
