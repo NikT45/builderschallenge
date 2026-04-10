@@ -69,6 +69,11 @@ export default function LoginPage() {
           style={{ background: "linear-gradient(to bottom, oklch(0.52 0.105 223.128 / 0.25) 0%, transparent 55%)", zIndex: 1 }}
         />
 
+        {/* Top-left wordmark */}
+        <p className="absolute left-14 top-10 z-10 text-[24px] font-extralight tracking-[-0.02em] text-foreground/80" style={{ animation: "anvil-fade 0.4s ease both" }}>
+          Anvil Due Diligence
+        </p>
+
         {/* Hero copy */}
         <div className="max-w-xl" style={{ animation: "anvil-fade 0.5s 0.08s ease both" }}>
 
@@ -76,9 +81,9 @@ export default function LoginPage() {
           <h1
             className="text-[60px] font-thin leading-[1.05] tracking-[-0.02em] text-foreground/80"
           >
-            Research-grade<br />
-            AI for serious<br />
-            investors.
+            Financial research,<br />
+            done at machine<br />
+            speed.
           </h1>
 
           {/* Descriptor */}

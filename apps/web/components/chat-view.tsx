@@ -17,6 +17,7 @@ interface ChatViewProps {
   onOpenReportById: (reportId: string) => void
   initialChatId?: string | null
   onChatCreated?: (chatId: string) => void
+  userId?: string
 }
 
 const SUGGESTED_PROMPTS = [
@@ -26,8 +27,8 @@ const SUGGESTED_PROMPTS = [
   "Compare MSFT vs GOOGL margins",
 ]
 
-export function ChatView({ onReportComplete, onOpenReportById, initialChatId = null, onChatCreated }: ChatViewProps) {
-  const { messages, isStreaming, thinkingActivity, ddJobId, ddCompany, chatId, sendMessage, appendReportCard, clearDdJob, startDdJob } = useChat(initialChatId, onChatCreated)
+export function ChatView({ onReportComplete, onOpenReportById, initialChatId = null, onChatCreated, userId }: ChatViewProps) {
+  const { messages, isStreaming, thinkingActivity, ddJobId, ddCompany, chatId, sendMessage, appendReportCard, clearDdJob, startDdJob } = useChat(initialChatId, onChatCreated, userId)
   const [input, setInput] = useState("")
   const bottomRef = useRef<HTMLDivElement>(null)
   const [autoDdQueue, setAutoDdQueue] = useState<AutoDdRequest[]>([])
@@ -141,8 +142,8 @@ export function ChatView({ onReportComplete, onOpenReportById, initialChatId = n
             </div>
 
             <div className="relative flex flex-col items-center gap-3 text-center">
-              <h1 className="text-[26px] font-semibold tracking-tight text-foreground">
-                What would you like to analyze?
+              <h1 className="text-[40px] font-extralight tracking-[-0.02em] text-foreground/80">
+                What are you researching?
               </h1>
               <p className="max-w-sm text-[13px] text-muted-foreground">
                 Ask about a company's financials, request a diligence report, or upload
