@@ -255,6 +255,7 @@ export default function HomePage() {
   const [openReport, setOpenReport] = useState<DDReport | null>(null)
   const [chats, setChats] = useState<ChatListItem[]>([])
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null)
+  const [userId, setUserId] = useState<string | undefined>(undefined)
   // A version key forces ChatView to remount when user picks a different chat
   // or starts a new chat, so useChat re-initializes with the new id.
   const [chatKey, setChatKey] = useState(0)
@@ -265,12 +266,16 @@ export default function HomePage() {
       .catch((e) => console.error("Failed to load chats:", e))
   }
 
-  // Hydrate reports + chats from Supabase on mount
+  // Hydrate reports + chats from Supabase on mount, and load current user
   useEffect(() => {
     listReports()
       .then(setReports)
       .catch((e) => console.error("Failed to load reports:", e))
     refreshChats()
+    const supabase = createClient()
+    supabase.auth.getUser().then(({ data }) => {
+      if (data.user?.id) setUserId(data.user.id)
+    })
   }, [])
 
   const handleReportComplete = async (report: DDReport, chatId: string | null): Promise<DDReport> => {
@@ -332,6 +337,7 @@ export default function HomePage() {
         onChatCreated={handleChatCreated}
         onReportComplete={handleReportComplete}
         onOpenReportById={handleOpenReportById}
+        userId={userId}
       />
     )
   }
