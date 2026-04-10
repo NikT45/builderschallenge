@@ -216,31 +216,90 @@ function DocumentsPanel() {
 // ─── Settings ────────────────────────────────────────────────────────────────
 
 function SettingsPanel() {
+  const [email, setEmail] = useState<string | null>(null)
+  const [signingOut, setSigningOut] = useState(false)
+  const [userCreatedAt, setUserCreatedAt] = useState<string | null>(null)
+
+  useEffect(() => {
+    const supabase = createClient()
+    supabase.auth.getUser().then(({ data }) => {
+      if (data.user) {
+        setEmail(data.user.email ?? null)
+        setUserCreatedAt(data.user.created_at ?? null)
+      }
+    })
+  }, [])
+
+  const handleSignOut = async () => {
+    setSigningOut(true)
+    const supabase = createClient()
+    await supabase.auth.signOut()
+    window.location.href = "/"
+  }
+
   return (
     <div className="flex h-full flex-col">
       <div className="flex h-[52px] items-center border-b border-border px-6">
         <div>
           <h1 className="text-[13px] font-semibold text-foreground">Settings</h1>
-          <p className="font-mono text-[10px] text-muted-foreground">Preferences & API keys</p>
+          <p className="font-mono text-[10px] text-muted-foreground">Account & preferences</p>
         </div>
       </div>
       <div className="flex-1 overflow-y-auto px-6 py-6">
-        <div className="mx-auto max-w-lg space-y-8">
+        <div className="mx-auto max-w-lg space-y-6">
+
+          {/* Account */}
           <section>
-            <h2 className="mb-3 font-mono text-[11px] uppercase tracking-widest text-muted-foreground">API Keys</h2>
-            <div className="space-y-3 rounded-[7px] border border-border bg-card p-4">
-              {[
-                { label: "Anthropic API Key", placeholder: "sk-ant-…" },
-                { label: "Tavily API Key", placeholder: "tvly-…" },
-              ].map(({ label, placeholder }) => (
-                <div key={label} className="space-y-1">
-                  <label className="font-mono text-[11px] text-muted-foreground">{label}</label>
-                  <input type="password" placeholder={placeholder} className="w-full rounded-[5px] border border-border bg-background px-3 py-1.5 font-mono text-[12px] text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-2 focus:ring-ring/40" />
-                </div>
-              ))}
+            <h2 className="mb-3 font-mono text-[11px] uppercase tracking-widest text-muted-foreground">Account</h2>
+            <div className="rounded-[7px] border border-border bg-card divide-y divide-border">
+              <div className="flex items-center justify-between px-4 py-3">
+                <span className="font-mono text-[11px] text-muted-foreground">Email</span>
+                <span className="font-mono text-[12px] text-foreground">{email ?? "—"}</span>
+              </div>
+              <div className="flex items-center justify-between px-4 py-3">
+                <span className="font-mono text-[11px] text-muted-foreground">Member since</span>
+                <span className="font-mono text-[12px] text-foreground">
+                  {userCreatedAt
+                    ? new Date(userCreatedAt).toLocaleDateString("en-US", { month: "long", year: "numeric" })
+                    : "—"}
+                </span>
+              </div>
             </div>
           </section>
-          <button className="w-full rounded-[5px] bg-primary py-2 font-mono text-[12px] font-medium text-primary-foreground transition-opacity hover:opacity-80">Save settings</button>
+
+          {/* Data */}
+          <section>
+            <h2 className="mb-3 font-mono text-[11px] uppercase tracking-widest text-muted-foreground">Data</h2>
+            <div className="rounded-[7px] border border-border bg-card divide-y divide-border">
+              <div className="flex items-center justify-between px-4 py-3">
+                <div>
+                  <p className="text-[12px] font-medium text-foreground">Documents & embeddings</p>
+                  <p className="font-mono text-[10px] text-muted-foreground mt-0.5">Uploaded files are scoped to your account</p>
+                </div>
+                <span className="rounded-[3px] bg-green-600/10 px-2 py-0.5 font-mono text-[10px] font-medium text-green-600">Private</span>
+              </div>
+              <div className="flex items-center justify-between px-4 py-3">
+                <div>
+                  <p className="text-[12px] font-medium text-foreground">Due diligence reports</p>
+                  <p className="font-mono text-[10px] text-muted-foreground mt-0.5">Reports and chat history are isolated per user</p>
+                </div>
+                <span className="rounded-[3px] bg-green-600/10 px-2 py-0.5 font-mono text-[10px] font-medium text-green-600">Private</span>
+              </div>
+            </div>
+          </section>
+
+          {/* Sign out */}
+          <section>
+            <h2 className="mb-3 font-mono text-[11px] uppercase tracking-widest text-muted-foreground">Session</h2>
+            <button
+              onClick={handleSignOut}
+              disabled={signingOut}
+              className="w-full rounded-[5px] border border-destructive/40 bg-destructive/5 py-2 font-mono text-[12px] font-medium text-destructive transition-colors hover:bg-destructive/10 disabled:opacity-50"
+            >
+              {signingOut ? "Signing out…" : "Sign out"}
+            </button>
+          </section>
+
         </div>
       </div>
     </div>

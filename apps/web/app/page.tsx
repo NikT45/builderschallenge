@@ -17,7 +17,6 @@ export default function LoginPage() {
   const [password, setPassword] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
-  const [mode, setMode] = useState<"signin" | "signup">("signin")
 
   async function handleSignIn() {
     setLoading(true)
@@ -29,19 +28,9 @@ export default function LoginPage() {
     setLoading(false)
   }
 
-  async function handleSignUp() {
-    setLoading(true)
-    setError(null)
-    const supabase = createClient()
-    const { error } = await supabase.auth.signUp({ email, password })
-    if (error) setError(error.message)
-    else setError("Check your email to confirm your account.")
-    setLoading(false)
-  }
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    mode === "signin" ? handleSignIn() : handleSignUp()
+    handleSignIn()
   }
 
   return (
@@ -55,7 +44,7 @@ export default function LoginPage() {
         <div
           className="pointer-events-none absolute inset-0"
           style={{
-            backgroundImage: "radial-gradient(circle, oklch(0.897 0.196 126.665) 1.8px, transparent 1.8px)",
+            backgroundImage: "radial-gradient(circle, oklch(0.897 0.196 126.665) 1.5px, transparent 1.5px)",
             backgroundSize: "28px 28px",
             WebkitMaskImage: "linear-gradient(to top, black 0%, transparent 60%)",
             maskImage: "linear-gradient(to top, black 0%, transparent 60%)",
@@ -344,22 +333,7 @@ export default function LoginPage() {
         style={{ background: "var(--sidebar)", animation: "anvil-slide 0.45s 0.05s ease both" }}
       >
 
-        {/* Mode toggle tabs */}
-        <div className="mb-8 flex border border-border">
-          {(["signin", "signup"] as const).map((m) => (
-            <button
-              key={m}
-              onClick={() => { setMode(m); setError(null) }}
-              className="flex-1 py-2 font-mono text-[11px] uppercase tracking-widest transition-colors"
-              style={{
-                background: mode === m ? "var(--primary)" : "transparent",
-                color: mode === m ? "var(--primary-foreground)" : "var(--muted-foreground)",
-              }}
-            >
-              {m === "signin" ? "Sign In" : "Sign Up"}
-            </button>
-          ))}
-        </div>
+        <p className="mb-8 font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground">Sign In</p>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-5">
           {/* Email */}
@@ -411,9 +385,7 @@ export default function LoginPage() {
               borderRadius: 0,
             }}
           >
-            {loading
-              ? mode === "signin" ? "Signing in…" : "Creating…"
-              : mode === "signin" ? "Sign In →" : "Create Account →"}
+            {loading ? "Signing in…" : "Sign In →"}
           </button>
         </form>
 
