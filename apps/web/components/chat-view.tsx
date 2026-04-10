@@ -135,11 +135,21 @@ export function ChatView({ onReportComplete, onOpenReportById, initialChatId = n
         )}
         {isEmpty ? (
           <div className="relative flex h-full flex-col items-center justify-center gap-8 overflow-hidden px-6">
-            {/* Background orbs */}
-            <div className="pointer-events-none absolute inset-0">
-              <div className="absolute left-[-10%] top-[20%] h-[360px] w-[560px] -translate-y-1/2 rounded-full bg-[var(--chart-1)] opacity-10 blur-[120px]" />
-              <div className="absolute bottom-[15%] right-[-10%] h-[300px] w-[480px] translate-y-1/2 rounded-full bg-[var(--primary)] opacity-15 blur-[100px]" />
-            </div>
+            {/* Background gradient */}
+            <div
+              className="pointer-events-none absolute inset-0"
+              style={{ background: "linear-gradient(to top, oklch(0.52 0.105 223.128 / 0.40) 0%, transparent 55%)" }}
+            />
+            {/* Dot grid */}
+            <div
+              className="pointer-events-none absolute inset-0"
+              style={{
+                backgroundImage: "radial-gradient(circle, rgba(255,255,255,0.55) 1.5px, transparent 1.5px)",
+                backgroundSize: "28px 28px",
+                WebkitMaskImage: "linear-gradient(to top, black 0%, transparent 60%)",
+                maskImage: "linear-gradient(to top, black 0%, transparent 60%)",
+              }}
+            />
 
             <div className="relative flex flex-col items-center gap-3 text-center">
               <h1 className="text-[40px] font-extralight tracking-[-0.02em] text-foreground/80">
