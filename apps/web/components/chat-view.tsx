@@ -42,6 +42,7 @@ export function ChatView({ onReportComplete, onOpenReportById, initialChatId = n
   useEffect(() => {
     if (!ddJobId && !isStartingAutoDd && !autoDdRunning && autoDdQueue.length > 0) {
       const [next, ...rest] = autoDdQueue
+      if (!next) return
       setAutoDdQueue(rest)
       setIsStartingAutoDd(true)
       startDdJob(next.company, next.prompt)
